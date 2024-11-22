@@ -9,6 +9,7 @@ package importer
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 )
@@ -20,14 +21,75 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type TypeRequest struct {
+type ScanRecordType int32
+
+const (
+	ScanRecordType_SCAN_RECORD_TYPE_UNSPECIFIED ScanRecordType = 0
+	ScanRecordType_SCAN_RECORD_TYPE_FILE        ScanRecordType = 1
+	ScanRecordType_SCAN_RECORD_TYPE_DIRECTORY   ScanRecordType = 2
+	ScanRecordType_SCAN_RECORD_TYPE_SYMLINK     ScanRecordType = 3
+	ScanRecordType_SCAN_RECORD_TYPE_DEVICE      ScanRecordType = 4
+	ScanRecordType_SCAN_RECORD_TYPE_PIPE        ScanRecordType = 5
+	ScanRecordType_SCAN_RECORD_TYPE_SOCKET      ScanRecordType = 6
+)
+
+// Enum value maps for ScanRecordType.
+var (
+	ScanRecordType_name = map[int32]string{
+		0: "SCAN_RECORD_TYPE_UNSPECIFIED",
+		1: "SCAN_RECORD_TYPE_FILE",
+		2: "SCAN_RECORD_TYPE_DIRECTORY",
+		3: "SCAN_RECORD_TYPE_SYMLINK",
+		4: "SCAN_RECORD_TYPE_DEVICE",
+		5: "SCAN_RECORD_TYPE_PIPE",
+		6: "SCAN_RECORD_TYPE_SOCKET",
+	}
+	ScanRecordType_value = map[string]int32{
+		"SCAN_RECORD_TYPE_UNSPECIFIED": 0,
+		"SCAN_RECORD_TYPE_FILE":        1,
+		"SCAN_RECORD_TYPE_DIRECTORY":   2,
+		"SCAN_RECORD_TYPE_SYMLINK":     3,
+		"SCAN_RECORD_TYPE_DEVICE":      4,
+		"SCAN_RECORD_TYPE_PIPE":        5,
+		"SCAN_RECORD_TYPE_SOCKET":      6,
+	}
+)
+
+func (x ScanRecordType) Enum() *ScanRecordType {
+	p := new(ScanRecordType)
+	*p = x
+	return p
+}
+
+func (x ScanRecordType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ScanRecordType) Descriptor() protoreflect.EnumDescriptor {
+	return file_importer_proto_enumTypes[0].Descriptor()
+}
+
+func (ScanRecordType) Type() protoreflect.EnumType {
+	return &file_importer_proto_enumTypes[0]
+}
+
+func (x ScanRecordType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ScanRecordType.Descriptor instead.
+func (ScanRecordType) EnumDescriptor() ([]byte, []int) {
+	return file_importer_proto_rawDescGZIP(), []int{0}
+}
+
+type InfoRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *TypeRequest) Reset() {
-	*x = TypeRequest{}
+func (x *InfoRequest) Reset() {
+	*x = InfoRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_importer_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -35,13 +97,13 @@ func (x *TypeRequest) Reset() {
 	}
 }
 
-func (x *TypeRequest) String() string {
+func (x *InfoRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*TypeRequest) ProtoMessage() {}
+func (*InfoRequest) ProtoMessage() {}
 
-func (x *TypeRequest) ProtoReflect() protoreflect.Message {
+func (x *InfoRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_importer_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -53,21 +115,23 @@ func (x *TypeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TypeRequest.ProtoReflect.Descriptor instead.
-func (*TypeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use InfoRequest.ProtoReflect.Descriptor instead.
+func (*InfoRequest) Descriptor() ([]byte, []int) {
 	return file_importer_proto_rawDescGZIP(), []int{0}
 }
 
-type TypeResponse struct {
+type InfoResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Type   string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Origin string `protobuf:"bytes,2,opt,name=origin,proto3" json:"origin,omitempty"`
+	Root   string `protobuf:"bytes,3,opt,name=root,proto3" json:"root,omitempty"`
 }
 
-func (x *TypeResponse) Reset() {
-	*x = TypeResponse{}
+func (x *InfoResponse) Reset() {
+	*x = InfoResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_importer_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -75,13 +139,13 @@ func (x *TypeResponse) Reset() {
 	}
 }
 
-func (x *TypeResponse) String() string {
+func (x *InfoResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*TypeResponse) ProtoMessage() {}
+func (*InfoResponse) ProtoMessage() {}
 
-func (x *TypeResponse) ProtoReflect() protoreflect.Message {
+func (x *InfoResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_importer_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -93,182 +157,26 @@ func (x *TypeResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TypeResponse.ProtoReflect.Descriptor instead.
-func (*TypeResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use InfoResponse.ProtoReflect.Descriptor instead.
+func (*InfoResponse) Descriptor() ([]byte, []int) {
 	return file_importer_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *TypeResponse) GetType() string {
+func (x *InfoResponse) GetType() string {
 	if x != nil {
 		return x.Type
 	}
 	return ""
 }
 
-type OriginRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *OriginRequest) Reset() {
-	*x = OriginRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_importer_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *OriginRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*OriginRequest) ProtoMessage() {}
-
-func (x *OriginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_importer_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use OriginRequest.ProtoReflect.Descriptor instead.
-func (*OriginRequest) Descriptor() ([]byte, []int) {
-	return file_importer_proto_rawDescGZIP(), []int{2}
-}
-
-type OriginResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Origin string `protobuf:"bytes,1,opt,name=origin,proto3" json:"origin,omitempty"`
-}
-
-func (x *OriginResponse) Reset() {
-	*x = OriginResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_importer_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *OriginResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*OriginResponse) ProtoMessage() {}
-
-func (x *OriginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_importer_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use OriginResponse.ProtoReflect.Descriptor instead.
-func (*OriginResponse) Descriptor() ([]byte, []int) {
-	return file_importer_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *OriginResponse) GetOrigin() string {
+func (x *InfoResponse) GetOrigin() string {
 	if x != nil {
 		return x.Origin
 	}
 	return ""
 }
 
-type RootRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *RootRequest) Reset() {
-	*x = RootRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_importer_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RootRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RootRequest) ProtoMessage() {}
-
-func (x *RootRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_importer_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RootRequest.ProtoReflect.Descriptor instead.
-func (*RootRequest) Descriptor() ([]byte, []int) {
-	return file_importer_proto_rawDescGZIP(), []int{4}
-}
-
-type RootResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Root string `protobuf:"bytes,1,opt,name=root,proto3" json:"root,omitempty"`
-}
-
-func (x *RootResponse) Reset() {
-	*x = RootResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_importer_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RootResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RootResponse) ProtoMessage() {}
-
-func (x *RootResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_importer_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RootResponse.ProtoReflect.Descriptor instead.
-func (*RootResponse) Descriptor() ([]byte, []int) {
-	return file_importer_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *RootResponse) GetRoot() string {
+func (x *InfoResponse) GetRoot() string {
 	if x != nil {
 		return x.Root
 	}
@@ -284,7 +192,7 @@ type ScanRequest struct {
 func (x *ScanRequest) Reset() {
 	*x = ScanRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_importer_proto_msgTypes[6]
+		mi := &file_importer_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -297,7 +205,7 @@ func (x *ScanRequest) String() string {
 func (*ScanRequest) ProtoMessage() {}
 
 func (x *ScanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_importer_proto_msgTypes[6]
+	mi := &file_importer_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -310,7 +218,7 @@ func (x *ScanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanRequest.ProtoReflect.Descriptor instead.
 func (*ScanRequest) Descriptor() ([]byte, []int) {
-	return file_importer_proto_rawDescGZIP(), []int{6}
+	return file_importer_proto_rawDescGZIP(), []int{2}
 }
 
 type ScanResponse struct {
@@ -318,15 +226,18 @@ type ScanResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Mode uint32 `protobuf:"varint,2,opt,name=mode,proto3" json:"mode,omitempty"`
-	Size int64  `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
+	Pathname string `protobuf:"bytes,1,opt,name=pathname,proto3" json:"pathname,omitempty"`
+	// Types that are assignable to Result:
+	//
+	//	*ScanResponse_Error
+	//	*ScanResponse_Record
+	Result isScanResponse_Result `protobuf_oneof:"result"`
 }
 
 func (x *ScanResponse) Reset() {
 	*x = ScanResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_importer_proto_msgTypes[7]
+		mi := &file_importer_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -339,7 +250,7 @@ func (x *ScanResponse) String() string {
 func (*ScanResponse) ProtoMessage() {}
 
 func (x *ScanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_importer_proto_msgTypes[7]
+	mi := &file_importer_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -352,24 +263,363 @@ func (x *ScanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanResponse.ProtoReflect.Descriptor instead.
 func (*ScanResponse) Descriptor() ([]byte, []int) {
-	return file_importer_proto_rawDescGZIP(), []int{7}
+	return file_importer_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ScanResponse) GetName() string {
+func (x *ScanResponse) GetPathname() string {
+	if x != nil {
+		return x.Pathname
+	}
+	return ""
+}
+
+func (m *ScanResponse) GetResult() isScanResponse_Result {
+	if m != nil {
+		return m.Result
+	}
+	return nil
+}
+
+func (x *ScanResponse) GetError() *ScanError {
+	if x, ok := x.GetResult().(*ScanResponse_Error); ok {
+		return x.Error
+	}
+	return nil
+}
+
+func (x *ScanResponse) GetRecord() *ScanRecord {
+	if x, ok := x.GetResult().(*ScanResponse_Record); ok {
+		return x.Record
+	}
+	return nil
+}
+
+type isScanResponse_Result interface {
+	isScanResponse_Result()
+}
+
+type ScanResponse_Error struct {
+	Error *ScanError `protobuf:"bytes,3,opt,name=error,proto3,oneof"`
+}
+
+type ScanResponse_Record struct {
+	Record *ScanRecord `protobuf:"bytes,2,opt,name=record,proto3,oneof"`
+}
+
+func (*ScanResponse_Error) isScanResponse_Result() {}
+
+func (*ScanResponse_Record) isScanResponse_Result() {}
+
+type ScanError struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *ScanError) Reset() {
+	*x = ScanError{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_importer_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ScanError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScanError) ProtoMessage() {}
+
+func (x *ScanError) ProtoReflect() protoreflect.Message {
+	mi := &file_importer_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScanError.ProtoReflect.Descriptor instead.
+func (*ScanError) Descriptor() ([]byte, []int) {
+	return file_importer_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ScanError) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ScanRecord struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Type               ScanRecordType        `protobuf:"varint,1,opt,name=type,proto3,enum=importer.ScanRecordType" json:"type,omitempty"`
+	Target             string                `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	Fileinfo           *ScanRecordFileInfo   `protobuf:"bytes,3,opt,name=fileinfo,proto3" json:"fileinfo,omitempty"`
+	Children           []*ScanRecordFileInfo `protobuf:"bytes,4,rep,name=children,proto3" json:"children,omitempty"`
+	ExtendedAttributes map[string][]byte     `protobuf:"bytes,5,rep,name=extended_attributes,json=extendedAttributes,proto3" json:"extended_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	FileAttributes     []string              `protobuf:"bytes,6,rep,name=file_attributes,json=fileAttributes,proto3" json:"file_attributes,omitempty"`
+}
+
+func (x *ScanRecord) Reset() {
+	*x = ScanRecord{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_importer_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ScanRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScanRecord) ProtoMessage() {}
+
+func (x *ScanRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_importer_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScanRecord.ProtoReflect.Descriptor instead.
+func (*ScanRecord) Descriptor() ([]byte, []int) {
+	return file_importer_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ScanRecord) GetType() ScanRecordType {
+	if x != nil {
+		return x.Type
+	}
+	return ScanRecordType_SCAN_RECORD_TYPE_UNSPECIFIED
+}
+
+func (x *ScanRecord) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *ScanRecord) GetFileinfo() *ScanRecordFileInfo {
+	if x != nil {
+		return x.Fileinfo
+	}
+	return nil
+}
+
+func (x *ScanRecord) GetChildren() []*ScanRecordFileInfo {
+	if x != nil {
+		return x.Children
+	}
+	return nil
+}
+
+func (x *ScanRecord) GetExtendedAttributes() map[string][]byte {
+	if x != nil {
+		return x.ExtendedAttributes
+	}
+	return nil
+}
+
+func (x *ScanRecord) GetFileAttributes() []string {
+	if x != nil {
+		return x.FileAttributes
+	}
+	return nil
+}
+
+type ScanRecordFileInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name      string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Size      int64                  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	Mode      int32                  `protobuf:"varint,3,opt,name=mode,proto3" json:"mode,omitempty"`
+	ModTime   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=mod_time,json=modTime,proto3" json:"mod_time,omitempty"`
+	Dev       uint64                 `protobuf:"varint,5,opt,name=dev,proto3" json:"dev,omitempty"`
+	Ino       uint64                 `protobuf:"varint,6,opt,name=ino,proto3" json:"ino,omitempty"`
+	Uid       uint64                 `protobuf:"varint,7,opt,name=uid,proto3" json:"uid,omitempty"`
+	Gid       uint64                 `protobuf:"varint,8,opt,name=gid,proto3" json:"gid,omitempty"`
+	Nlink     uint32                 `protobuf:"varint,9,opt,name=nlink,proto3" json:"nlink,omitempty"`
+	Username  string                 `protobuf:"bytes,10,opt,name=username,proto3" json:"username,omitempty"`
+	Groupname string                 `protobuf:"bytes,11,opt,name=groupname,proto3" json:"groupname,omitempty"`
+}
+
+func (x *ScanRecordFileInfo) Reset() {
+	*x = ScanRecordFileInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_importer_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ScanRecordFileInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScanRecordFileInfo) ProtoMessage() {}
+
+func (x *ScanRecordFileInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_importer_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScanRecordFileInfo.ProtoReflect.Descriptor instead.
+func (*ScanRecordFileInfo) Descriptor() ([]byte, []int) {
+	return file_importer_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ScanRecordFileInfo) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *ScanResponse) GetMode() uint32 {
+func (x *ScanRecordFileInfo) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *ScanRecordFileInfo) GetMode() int32 {
 	if x != nil {
 		return x.Mode
 	}
 	return 0
 }
 
-func (x *ScanResponse) GetSize() int64 {
+func (x *ScanRecordFileInfo) GetModTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ModTime
+	}
+	return nil
+}
+
+func (x *ScanRecordFileInfo) GetDev() uint64 {
+	if x != nil {
+		return x.Dev
+	}
+	return 0
+}
+
+func (x *ScanRecordFileInfo) GetIno() uint64 {
+	if x != nil {
+		return x.Ino
+	}
+	return 0
+}
+
+func (x *ScanRecordFileInfo) GetUid() uint64 {
+	if x != nil {
+		return x.Uid
+	}
+	return 0
+}
+
+func (x *ScanRecordFileInfo) GetGid() uint64 {
+	if x != nil {
+		return x.Gid
+	}
+	return 0
+}
+
+func (x *ScanRecordFileInfo) GetNlink() uint32 {
+	if x != nil {
+		return x.Nlink
+	}
+	return 0
+}
+
+func (x *ScanRecordFileInfo) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *ScanRecordFileInfo) GetGroupname() string {
+	if x != nil {
+		return x.Groupname
+	}
+	return ""
+}
+
+type ScanResponseError struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Size int64  `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
+}
+
+func (x *ScanResponseError) Reset() {
+	*x = ScanResponseError{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_importer_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ScanResponseError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScanResponseError) ProtoMessage() {}
+
+func (x *ScanResponseError) ProtoReflect() protoreflect.Message {
+	mi := &file_importer_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScanResponseError.ProtoReflect.Descriptor instead.
+func (*ScanResponseError) Descriptor() ([]byte, []int) {
+	return file_importer_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ScanResponseError) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ScanResponseError) GetSize() int64 {
 	if x != nil {
 		return x.Size
 	}
@@ -474,39 +724,98 @@ var File_importer_proto protoreflect.FileDescriptor
 
 var file_importer_proto_rawDesc = []byte{
 	0x0a, 0x0e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x12, 0x08, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x22, 0x0d, 0x0a, 0x0b, 0x54, 0x79,
-	0x70, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x22, 0x0a, 0x0c, 0x54, 0x79, 0x70,
-	0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70,
-	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x22, 0x0f, 0x0a,
-	0x0d, 0x4f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x28,
-	0x0a, 0x0e, 0x4f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x12, 0x16, 0x0a, 0x06, 0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x06, 0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x22, 0x0d, 0x0a, 0x0b, 0x52, 0x6f, 0x6f, 0x74,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x22, 0x0a, 0x0c, 0x52, 0x6f, 0x6f, 0x74, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x72, 0x6f, 0x6f, 0x74, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x72, 0x6f, 0x6f, 0x74, 0x22, 0x0d, 0x0a, 0x0b, 0x53,
-	0x63, 0x61, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x4a, 0x0a, 0x0c, 0x53, 0x63,
-	0x61, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61,
-	0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x12,
-	0x0a, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x04, 0x6d, 0x6f,
-	0x64, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03,
-	0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x22, 0x29, 0x0a, 0x0b, 0x52, 0x65, 0x61, 0x64, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x61, 0x74, 0x68, 0x6e, 0x61, 0x6d,
-	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x61, 0x74, 0x68, 0x6e, 0x61, 0x6d,
-	0x65, 0x22, 0x22, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x04, 0x64, 0x61, 0x74, 0x61, 0x32, 0xa7, 0x02, 0x0a, 0x08, 0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74,
-	0x65, 0x72, 0x12, 0x35, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x15, 0x2e, 0x69, 0x6d, 0x70,
-	0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x54, 0x79, 0x70, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x16, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x54, 0x79, 0x70,
-	0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x3b, 0x0a, 0x06, 0x4f, 0x72, 0x69,
-	0x67, 0x69, 0x6e, 0x12, 0x17, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x4f,
-	0x72, 0x69, 0x67, 0x69, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x18, 0x2e, 0x69,
-	0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x4f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x35, 0x0a, 0x04, 0x52, 0x6f, 0x6f, 0x74, 0x12, 0x15,
-	0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x52, 0x6f, 0x6f, 0x74, 0x52, 0x65,
+	0x12, 0x08, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x1a, 0x1f, 0x67, 0x6f, 0x6f, 0x67,
+	0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65,
+	0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x0d, 0x0a, 0x0b, 0x49,
+	0x6e, 0x66, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x4e, 0x0a, 0x0c, 0x49, 0x6e,
+	0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79,
+	0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x16,
+	0x0a, 0x06, 0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
+	0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x72, 0x6f, 0x6f, 0x74, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x72, 0x6f, 0x6f, 0x74, 0x22, 0x0d, 0x0a, 0x0b, 0x53, 0x63,
+	0x61, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x91, 0x01, 0x0a, 0x0c, 0x53, 0x63,
+	0x61, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x61,
+	0x74, 0x68, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x61,
+	0x74, 0x68, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x2b, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72,
+	0x2e, 0x53, 0x63, 0x61, 0x6e, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x48, 0x00, 0x52, 0x05, 0x65, 0x72,
+	0x72, 0x6f, 0x72, 0x12, 0x2e, 0x0a, 0x06, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x53,
+	0x63, 0x61, 0x6e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x48, 0x00, 0x52, 0x06, 0x72, 0x65, 0x63,
+	0x6f, 0x72, 0x64, 0x42, 0x08, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x22, 0x21, 0x0a,
+	0x09, 0x53, 0x63, 0x61, 0x6e, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x14, 0x0a, 0x05, 0x65, 0x72,
+	0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72,
+	0x22, 0x95, 0x03, 0x0a, 0x0a, 0x53, 0x63, 0x61, 0x6e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x12,
+	0x2c, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x18, 0x2e,
+	0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x53, 0x63, 0x61, 0x6e, 0x52, 0x65, 0x63,
+	0x6f, 0x72, 0x64, 0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x16, 0x0a,
+	0x06, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74,
+	0x61, 0x72, 0x67, 0x65, 0x74, 0x12, 0x38, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x69, 0x6e, 0x66,
+	0x6f, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74,
+	0x65, 0x72, 0x2e, 0x53, 0x63, 0x61, 0x6e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x46, 0x69, 0x6c,
+	0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x69, 0x6e, 0x66, 0x6f, 0x12,
+	0x38, 0x0a, 0x08, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x72, 0x65, 0x6e, 0x18, 0x04, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x1c, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x53, 0x63, 0x61,
+	0x6e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x46, 0x69, 0x6c, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52,
+	0x08, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x72, 0x65, 0x6e, 0x12, 0x5d, 0x0a, 0x13, 0x65, 0x78, 0x74,
+	0x65, 0x6e, 0x64, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73,
+	0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2c, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65,
+	0x72, 0x2e, 0x53, 0x63, 0x61, 0x6e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x2e, 0x45, 0x78, 0x74,
+	0x65, 0x6e, 0x64, 0x65, 0x64, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x45,
+	0x6e, 0x74, 0x72, 0x79, 0x52, 0x12, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x65, 0x64, 0x41, 0x74,
+	0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x12, 0x27, 0x0a, 0x0f, 0x66, 0x69, 0x6c, 0x65,
+	0x5f, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x18, 0x06, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x0e, 0x66, 0x69, 0x6c, 0x65, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65,
+	0x73, 0x1a, 0x45, 0x0a, 0x17, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x65, 0x64, 0x41, 0x74, 0x74,
+	0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03,
+	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14,
+	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x76,
+	0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x9f, 0x02, 0x0a, 0x12, 0x53, 0x63, 0x61,
+	0x6e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x46, 0x69, 0x6c, 0x65, 0x49, 0x6e, 0x66, 0x6f, 0x12,
+	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
+	0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x04, 0x6d, 0x6f, 0x64, 0x65, 0x12, 0x35, 0x0a, 0x08, 0x6d,
+	0x6f, 0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e,
+	0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e,
+	0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x07, 0x6d, 0x6f, 0x64, 0x54, 0x69,
+	0x6d, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x64, 0x65, 0x76, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x03, 0x64, 0x65, 0x76, 0x12, 0x10, 0x0a, 0x03, 0x69, 0x6e, 0x6f, 0x18, 0x06, 0x20, 0x01, 0x28,
+	0x04, 0x52, 0x03, 0x69, 0x6e, 0x6f, 0x12, 0x10, 0x0a, 0x03, 0x75, 0x69, 0x64, 0x18, 0x07, 0x20,
+	0x01, 0x28, 0x04, 0x52, 0x03, 0x75, 0x69, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x67, 0x69, 0x64, 0x18,
+	0x08, 0x20, 0x01, 0x28, 0x04, 0x52, 0x03, 0x67, 0x69, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6e, 0x6c,
+	0x69, 0x6e, 0x6b, 0x18, 0x09, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x05, 0x6e, 0x6c, 0x69, 0x6e, 0x6b,
+	0x12, 0x1a, 0x0a, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x0a, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x1c, 0x0a, 0x09,
+	0x67, 0x72, 0x6f, 0x75, 0x70, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x09, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x3b, 0x0a, 0x11, 0x53, 0x63,
+	0x61, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x12,
+	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
+	0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x22, 0x29, 0x0a, 0x0b, 0x52, 0x65, 0x61, 0x64, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x61, 0x74, 0x68, 0x6e, 0x61,
+	0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x61, 0x74, 0x68, 0x6e, 0x61,
+	0x6d, 0x65, 0x22, 0x22, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c,
+	0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x2a, 0xe0, 0x01, 0x0a, 0x0e, 0x53, 0x63, 0x61, 0x6e, 0x52,
+	0x65, 0x63, 0x6f, 0x72, 0x64, 0x54, 0x79, 0x70, 0x65, 0x12, 0x20, 0x0a, 0x1c, 0x53, 0x43, 0x41,
+	0x4e, 0x5f, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e,
+	0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x19, 0x0a, 0x15, 0x53,
+	0x43, 0x41, 0x4e, 0x5f, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f,
+	0x46, 0x49, 0x4c, 0x45, 0x10, 0x01, 0x12, 0x1e, 0x0a, 0x1a, 0x53, 0x43, 0x41, 0x4e, 0x5f, 0x52,
+	0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x44, 0x49, 0x52, 0x45, 0x43,
+	0x54, 0x4f, 0x52, 0x59, 0x10, 0x02, 0x12, 0x1c, 0x0a, 0x18, 0x53, 0x43, 0x41, 0x4e, 0x5f, 0x52,
+	0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x53, 0x59, 0x4d, 0x4c, 0x49,
+	0x4e, 0x4b, 0x10, 0x03, 0x12, 0x1b, 0x0a, 0x17, 0x53, 0x43, 0x41, 0x4e, 0x5f, 0x52, 0x45, 0x43,
+	0x4f, 0x52, 0x44, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x44, 0x45, 0x56, 0x49, 0x43, 0x45, 0x10,
+	0x04, 0x12, 0x19, 0x0a, 0x15, 0x53, 0x43, 0x41, 0x4e, 0x5f, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44,
+	0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x50, 0x49, 0x50, 0x45, 0x10, 0x05, 0x12, 0x1b, 0x0a, 0x17,
+	0x53, 0x43, 0x41, 0x4e, 0x5f, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x54, 0x59, 0x50, 0x45,
+	0x5f, 0x53, 0x4f, 0x43, 0x4b, 0x45, 0x54, 0x10, 0x06, 0x32, 0xb3, 0x01, 0x0a, 0x08, 0x49, 0x6d,
+	0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x12, 0x35, 0x0a, 0x04, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x15,
+	0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65,
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72,
-	0x2e, 0x52, 0x6f, 0x6f, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x37, 0x0a,
+	0x2e, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x37, 0x0a,
 	0x04, 0x53, 0x63, 0x61, 0x6e, 0x12, 0x15, 0x2e, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72,
 	0x2e, 0x53, 0x63, 0x61, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x69,
 	0x6d, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x72, 0x2e, 0x53, 0x63, 0x61, 0x6e, 0x52, 0x65, 0x73, 0x70,
@@ -529,35 +838,42 @@ func file_importer_proto_rawDescGZIP() []byte {
 	return file_importer_proto_rawDescData
 }
 
-var file_importer_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_importer_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_importer_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_importer_proto_goTypes = []any{
-	(*TypeRequest)(nil),    // 0: importer.TypeRequest
-	(*TypeResponse)(nil),   // 1: importer.TypeResponse
-	(*OriginRequest)(nil),  // 2: importer.OriginRequest
-	(*OriginResponse)(nil), // 3: importer.OriginResponse
-	(*RootRequest)(nil),    // 4: importer.RootRequest
-	(*RootResponse)(nil),   // 5: importer.RootResponse
-	(*ScanRequest)(nil),    // 6: importer.ScanRequest
-	(*ScanResponse)(nil),   // 7: importer.ScanResponse
-	(*ReadRequest)(nil),    // 8: importer.ReadRequest
-	(*ReadResponse)(nil),   // 9: importer.ReadResponse
+	(ScanRecordType)(0),           // 0: importer.ScanRecordType
+	(*InfoRequest)(nil),           // 1: importer.InfoRequest
+	(*InfoResponse)(nil),          // 2: importer.InfoResponse
+	(*ScanRequest)(nil),           // 3: importer.ScanRequest
+	(*ScanResponse)(nil),          // 4: importer.ScanResponse
+	(*ScanError)(nil),             // 5: importer.ScanError
+	(*ScanRecord)(nil),            // 6: importer.ScanRecord
+	(*ScanRecordFileInfo)(nil),    // 7: importer.ScanRecordFileInfo
+	(*ScanResponseError)(nil),     // 8: importer.ScanResponseError
+	(*ReadRequest)(nil),           // 9: importer.ReadRequest
+	(*ReadResponse)(nil),          // 10: importer.ReadResponse
+	nil,                           // 11: importer.ScanRecord.ExtendedAttributesEntry
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_importer_proto_depIdxs = []int32{
-	0, // 0: importer.Importer.Type:input_type -> importer.TypeRequest
-	2, // 1: importer.Importer.Origin:input_type -> importer.OriginRequest
-	4, // 2: importer.Importer.Root:input_type -> importer.RootRequest
-	6, // 3: importer.Importer.Scan:input_type -> importer.ScanRequest
-	8, // 4: importer.Importer.Read:input_type -> importer.ReadRequest
-	1, // 5: importer.Importer.Type:output_type -> importer.TypeResponse
-	3, // 6: importer.Importer.Origin:output_type -> importer.OriginResponse
-	5, // 7: importer.Importer.Root:output_type -> importer.RootResponse
-	7, // 8: importer.Importer.Scan:output_type -> importer.ScanResponse
-	9, // 9: importer.Importer.Read:output_type -> importer.ReadResponse
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	5,  // 0: importer.ScanResponse.error:type_name -> importer.ScanError
+	6,  // 1: importer.ScanResponse.record:type_name -> importer.ScanRecord
+	0,  // 2: importer.ScanRecord.type:type_name -> importer.ScanRecordType
+	7,  // 3: importer.ScanRecord.fileinfo:type_name -> importer.ScanRecordFileInfo
+	7,  // 4: importer.ScanRecord.children:type_name -> importer.ScanRecordFileInfo
+	11, // 5: importer.ScanRecord.extended_attributes:type_name -> importer.ScanRecord.ExtendedAttributesEntry
+	12, // 6: importer.ScanRecordFileInfo.mod_time:type_name -> google.protobuf.Timestamp
+	1,  // 7: importer.Importer.Info:input_type -> importer.InfoRequest
+	3,  // 8: importer.Importer.Scan:input_type -> importer.ScanRequest
+	9,  // 9: importer.Importer.Read:input_type -> importer.ReadRequest
+	2,  // 10: importer.Importer.Info:output_type -> importer.InfoResponse
+	4,  // 11: importer.Importer.Scan:output_type -> importer.ScanResponse
+	10, // 12: importer.Importer.Read:output_type -> importer.ReadResponse
+	10, // [10:13] is the sub-list for method output_type
+	7,  // [7:10] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_importer_proto_init() }
@@ -567,7 +883,7 @@ func file_importer_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_importer_proto_msgTypes[0].Exporter = func(v any, i int) any {
-			switch v := v.(*TypeRequest); i {
+			switch v := v.(*InfoRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -579,7 +895,7 @@ func file_importer_proto_init() {
 			}
 		}
 		file_importer_proto_msgTypes[1].Exporter = func(v any, i int) any {
-			switch v := v.(*TypeResponse); i {
+			switch v := v.(*InfoResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -591,54 +907,6 @@ func file_importer_proto_init() {
 			}
 		}
 		file_importer_proto_msgTypes[2].Exporter = func(v any, i int) any {
-			switch v := v.(*OriginRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_importer_proto_msgTypes[3].Exporter = func(v any, i int) any {
-			switch v := v.(*OriginResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_importer_proto_msgTypes[4].Exporter = func(v any, i int) any {
-			switch v := v.(*RootRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_importer_proto_msgTypes[5].Exporter = func(v any, i int) any {
-			switch v := v.(*RootResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_importer_proto_msgTypes[6].Exporter = func(v any, i int) any {
 			switch v := v.(*ScanRequest); i {
 			case 0:
 				return &v.state
@@ -650,8 +918,56 @@ func file_importer_proto_init() {
 				return nil
 			}
 		}
-		file_importer_proto_msgTypes[7].Exporter = func(v any, i int) any {
+		file_importer_proto_msgTypes[3].Exporter = func(v any, i int) any {
 			switch v := v.(*ScanResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_importer_proto_msgTypes[4].Exporter = func(v any, i int) any {
+			switch v := v.(*ScanError); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_importer_proto_msgTypes[5].Exporter = func(v any, i int) any {
+			switch v := v.(*ScanRecord); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_importer_proto_msgTypes[6].Exporter = func(v any, i int) any {
+			switch v := v.(*ScanRecordFileInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_importer_proto_msgTypes[7].Exporter = func(v any, i int) any {
+			switch v := v.(*ScanResponseError); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -687,18 +1003,23 @@ func file_importer_proto_init() {
 			}
 		}
 	}
+	file_importer_proto_msgTypes[3].OneofWrappers = []any{
+		(*ScanResponse_Error)(nil),
+		(*ScanResponse_Record)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_importer_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   10,
+			NumEnums:      1,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_importer_proto_goTypes,
 		DependencyIndexes: file_importer_proto_depIdxs,
+		EnumInfos:         file_importer_proto_enumTypes,
 		MessageInfos:      file_importer_proto_msgTypes,
 	}.Build()
 	File_importer_proto = out.File

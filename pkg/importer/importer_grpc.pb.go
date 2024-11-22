@@ -19,20 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	Importer_Type_FullMethodName   = "/importer.Importer/Type"
-	Importer_Origin_FullMethodName = "/importer.Importer/Origin"
-	Importer_Root_FullMethodName   = "/importer.Importer/Root"
-	Importer_Scan_FullMethodName   = "/importer.Importer/Scan"
-	Importer_Read_FullMethodName   = "/importer.Importer/Read"
+	Importer_Info_FullMethodName = "/importer.Importer/Info"
+	Importer_Scan_FullMethodName = "/importer.Importer/Scan"
+	Importer_Read_FullMethodName = "/importer.Importer/Read"
 )
 
 // ImporterClient is the client API for Importer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ImporterClient interface {
-	Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error)
-	Origin(ctx context.Context, in *OriginRequest, opts ...grpc.CallOption) (*OriginResponse, error)
-	Root(ctx context.Context, in *RootRequest, opts ...grpc.CallOption) (*RootResponse, error)
+	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
 	Scan(ctx context.Context, in *ScanRequest, opts ...grpc.CallOption) (Importer_ScanClient, error)
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (Importer_ReadClient, error)
 }
@@ -45,30 +41,10 @@ func NewImporterClient(cc grpc.ClientConnInterface) ImporterClient {
 	return &importerClient{cc}
 }
 
-func (c *importerClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error) {
+func (c *importerClient) Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(TypeResponse)
-	err := c.cc.Invoke(ctx, Importer_Type_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *importerClient) Origin(ctx context.Context, in *OriginRequest, opts ...grpc.CallOption) (*OriginResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(OriginResponse)
-	err := c.cc.Invoke(ctx, Importer_Origin_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *importerClient) Root(ctx context.Context, in *RootRequest, opts ...grpc.CallOption) (*RootResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RootResponse)
-	err := c.cc.Invoke(ctx, Importer_Root_FullMethodName, in, out, cOpts...)
+	out := new(InfoResponse)
+	err := c.cc.Invoke(ctx, Importer_Info_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -145,9 +121,7 @@ func (x *importerReadClient) Recv() (*ReadResponse, error) {
 // All implementations must embed UnimplementedImporterServer
 // for forward compatibility
 type ImporterServer interface {
-	Type(context.Context, *TypeRequest) (*TypeResponse, error)
-	Origin(context.Context, *OriginRequest) (*OriginResponse, error)
-	Root(context.Context, *RootRequest) (*RootResponse, error)
+	Info(context.Context, *InfoRequest) (*InfoResponse, error)
 	Scan(*ScanRequest, Importer_ScanServer) error
 	Read(*ReadRequest, Importer_ReadServer) error
 	mustEmbedUnimplementedImporterServer()
@@ -157,14 +131,8 @@ type ImporterServer interface {
 type UnimplementedImporterServer struct {
 }
 
-func (UnimplementedImporterServer) Type(context.Context, *TypeRequest) (*TypeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Type not implemented")
-}
-func (UnimplementedImporterServer) Origin(context.Context, *OriginRequest) (*OriginResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Origin not implemented")
-}
-func (UnimplementedImporterServer) Root(context.Context, *RootRequest) (*RootResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Root not implemented")
+func (UnimplementedImporterServer) Info(context.Context, *InfoRequest) (*InfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
 }
 func (UnimplementedImporterServer) Scan(*ScanRequest, Importer_ScanServer) error {
 	return status.Errorf(codes.Unimplemented, "method Scan not implemented")
@@ -185,56 +153,20 @@ func RegisterImporterServer(s grpc.ServiceRegistrar, srv ImporterServer) {
 	s.RegisterService(&Importer_ServiceDesc, srv)
 }
 
-func _Importer_Type_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TypeRequest)
+func _Importer_Info_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ImporterServer).Type(ctx, in)
+		return srv.(ImporterServer).Info(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Importer_Type_FullMethodName,
+		FullMethod: Importer_Info_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ImporterServer).Type(ctx, req.(*TypeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Importer_Origin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OriginRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ImporterServer).Origin(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Importer_Origin_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ImporterServer).Origin(ctx, req.(*OriginRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Importer_Root_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RootRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ImporterServer).Root(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Importer_Root_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ImporterServer).Root(ctx, req.(*RootRequest))
+		return srv.(ImporterServer).Info(ctx, req.(*InfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -289,16 +221,8 @@ var Importer_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ImporterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Type",
-			Handler:    _Importer_Type_Handler,
-		},
-		{
-			MethodName: "Origin",
-			Handler:    _Importer_Origin_Handler,
-		},
-		{
-			MethodName: "Root",
-			Handler:    _Importer_Root_Handler,
+			MethodName: "Info",
+			Handler:    _Importer_Info_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
