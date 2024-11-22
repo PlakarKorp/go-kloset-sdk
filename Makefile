@@ -7,8 +7,10 @@ gen:
 		-w /app \
 		rvolosatovs/protoc \
 			--proto_path=/app \
-			--go_out=. \
-			--go_opt=paths=source_relative \
-			--go-grpc_out=. \
-			--go-grpc_opt=paths=source_relative \
+			--go_out=./pkg/importer/ \
+			--go_opt=paths=source_relative,Mimporter.proto=github.com/PlakarKorp/go-plakar-sdk/importer\
+			--go-grpc_out=./pkg/importer/ \
+			--go-grpc_opt=paths=source_relative,Mimporter.proto=github.com/PlakarKorp/go-plakar-sdk/importer \
 			/app/importer.proto
+
+	rm -f ./importer.proto
