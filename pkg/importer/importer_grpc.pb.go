@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	Importer_Info_FullMethodName = "/importer.Importer/Info"
-	Importer_Scan_FullMethodName = "/importer.Importer/Scan"
-	Importer_Read_FullMethodName = "/importer.Importer/Read"
+	Importer_Info_FullMethodName      = "/importer.Importer/Info"
+	Importer_Scan_FullMethodName      = "/importer.Importer/Scan"
+	Importer_Read_FullMethodName      = "/importer.Importer/Read"
+	Importer_ReadLocal_FullMethodName = "/importer.Importer/ReadLocal"
 )
 
 // ImporterClient is the client API for Importer service.
@@ -31,6 +32,7 @@ type ImporterClient interface {
 	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
 	Scan(ctx context.Context, in *ScanRequest, opts ...grpc.CallOption) (Importer_ScanClient, error)
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (Importer_ReadClient, error)
+	ReadLocal(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadLocalResponse, error)
 }
 
 type importerClient struct {
@@ -117,6 +119,16 @@ func (x *importerReadClient) Recv() (*ReadResponse, error) {
 	return m, nil
 }
 
+func (c *importerClient) ReadLocal(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadLocalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadLocalResponse)
+	err := c.cc.Invoke(ctx, Importer_ReadLocal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ImporterServer is the server API for Importer service.
 // All implementations must embed UnimplementedImporterServer
 // for forward compatibility
@@ -124,6 +136,7 @@ type ImporterServer interface {
 	Info(context.Context, *InfoRequest) (*InfoResponse, error)
 	Scan(*ScanRequest, Importer_ScanServer) error
 	Read(*ReadRequest, Importer_ReadServer) error
+	ReadLocal(context.Context, *ReadRequest) (*ReadLocalResponse, error)
 	mustEmbedUnimplementedImporterServer()
 }
 
@@ -139,6 +152,9 @@ func (UnimplementedImporterServer) Scan(*ScanRequest, Importer_ScanServer) error
 }
 func (UnimplementedImporterServer) Read(*ReadRequest, Importer_ReadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedImporterServer) ReadLocal(context.Context, *ReadRequest) (*ReadLocalResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadLocal not implemented")
 }
 func (UnimplementedImporterServer) mustEmbedUnimplementedImporterServer() {}
 
@@ -213,6 +229,24 @@ func (x *importerReadServer) Send(m *ReadResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Importer_ReadLocal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ImporterServer).ReadLocal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Importer_ReadLocal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ImporterServer).ReadLocal(ctx, req.(*ReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Importer_ServiceDesc is the grpc.ServiceDesc for Importer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -223,6 +257,10 @@ var Importer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Info",
 			Handler:    _Importer_Info_Handler,
+		},
+		{
+			MethodName: "ReadLocal",
+			Handler:    _Importer_ReadLocal_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
