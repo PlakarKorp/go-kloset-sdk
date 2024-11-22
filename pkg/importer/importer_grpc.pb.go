@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion8
 const (
 	Importer_Type_FullMethodName   = "/importer.Importer/Type"
 	Importer_Origin_FullMethodName = "/importer.Importer/Origin"
+	Importer_Root_FullMethodName   = "/importer.Importer/Root"
 	Importer_Scan_FullMethodName   = "/importer.Importer/Scan"
 	Importer_Read_FullMethodName   = "/importer.Importer/Read"
 )
@@ -31,6 +32,7 @@ const (
 type ImporterClient interface {
 	Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error)
 	Origin(ctx context.Context, in *OriginRequest, opts ...grpc.CallOption) (*OriginResponse, error)
+	Root(ctx context.Context, in *RootRequest, opts ...grpc.CallOption) (*RootResponse, error)
 	Scan(ctx context.Context, in *ScanRequest, opts ...grpc.CallOption) (Importer_ScanClient, error)
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (Importer_ReadClient, error)
 }
@@ -57,6 +59,16 @@ func (c *importerClient) Origin(ctx context.Context, in *OriginRequest, opts ...
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OriginResponse)
 	err := c.cc.Invoke(ctx, Importer_Origin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *importerClient) Root(ctx context.Context, in *RootRequest, opts ...grpc.CallOption) (*RootResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RootResponse)
+	err := c.cc.Invoke(ctx, Importer_Root_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +147,7 @@ func (x *importerReadClient) Recv() (*ReadResponse, error) {
 type ImporterServer interface {
 	Type(context.Context, *TypeRequest) (*TypeResponse, error)
 	Origin(context.Context, *OriginRequest) (*OriginResponse, error)
+	Root(context.Context, *RootRequest) (*RootResponse, error)
 	Scan(*ScanRequest, Importer_ScanServer) error
 	Read(*ReadRequest, Importer_ReadServer) error
 	mustEmbedUnimplementedImporterServer()
@@ -149,6 +162,9 @@ func (UnimplementedImporterServer) Type(context.Context, *TypeRequest) (*TypeRes
 }
 func (UnimplementedImporterServer) Origin(context.Context, *OriginRequest) (*OriginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Origin not implemented")
+}
+func (UnimplementedImporterServer) Root(context.Context, *RootRequest) (*RootResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Root not implemented")
 }
 func (UnimplementedImporterServer) Scan(*ScanRequest, Importer_ScanServer) error {
 	return status.Errorf(codes.Unimplemented, "method Scan not implemented")
@@ -201,6 +217,24 @@ func _Importer_Origin_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ImporterServer).Origin(ctx, req.(*OriginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Importer_Root_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RootRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ImporterServer).Root(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Importer_Root_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ImporterServer).Root(ctx, req.(*RootRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -261,6 +295,10 @@ var Importer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Origin",
 			Handler:    _Importer_Origin_Handler,
+		},
+		{
+			MethodName: "Root",
+			Handler:    _Importer_Root_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
