@@ -95,7 +95,6 @@ type ScanResponseRecord struct {
 // type ScanResponseRecord = importer.ScanResponse_Record
 
 type ScanRecord struct {
-	Path           string
 	Target         string
 	Fileinfo       *ScanRecordFileInfo
 	FileAttributes uint32
