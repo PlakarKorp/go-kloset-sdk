@@ -11,7 +11,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type InfoRequest = importer.InfoRequest
+// type InfoRequest = importer.InfoRequest
+type InfoRequest struct {
+	impl *importer.InfoRequest
+}
 type InfoResponse = importer.InfoResponse
 
 type ScanRequest = importer.ScanRequest
@@ -42,8 +45,8 @@ type ImporterPluginServer struct {
 	importer.UnimplementedImporterServer
 }
 
-func (plugin *ImporterPluginServer) Info(ctx context.Context, req *importer.InfoRequest) (*importer.InfoResponse, error) {
-	return plugin.imp.Info(ctx, req)
+func (plugin *ImporterPluginServer) Info(ctx context.Context, req *InfoRequest) (*importer.InfoResponse, error) {
+	return plugin.imp.Info(ctx, req.impl)
 }
 
 func (plugin *ImporterPluginServer) Scan(req *importer.ScanRequest, stream importer.Importer_ScanServer) error {
