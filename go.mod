@@ -1,4 +1,4 @@
-module github.com/PlakarKorp/go-plakar-sdk
+module github.com/PlakarKorp/go-kloset-sdk
 
 go 1.23.3
 
