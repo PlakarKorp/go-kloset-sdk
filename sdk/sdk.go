@@ -62,15 +62,41 @@ type ScanResponseRecord struct {
 // type ScanResponseRecord = importer.ScanResponse_Record
 
 type ScanRecord struct {
-	Path     string
-	FileInfo *ScanRecordFileInfo
+	Path     	   string
+	Target         string
+	Fileinfo       *ScanRecordFileInfo
+	FileAttributes uint32
+	Xattr          *ExtendedAttribute
 }
+
 // type ScanRecord = importer.ScanRecord
 
+type ExtendedAttribute struct {
+	Name string
+	Type ExtendedAttributeType
+}
+
+type ExtendedAttributeType int32
+
+const (
+	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_UNSPECIFIED ExtendedAttributeType = 0
+	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_EXTENDED    ExtendedAttributeType = 1
+	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_ADS         ExtendedAttributeType = 2
+)
+
 type ScanRecordFileInfo struct {
+	Name      string
 	Size      int64
-	CreatedAt ImporterTimestamp
-	UpdatedAt ImporterTimestamp
+	Mode      uint32
+	ModTime   *timestamppb.Timestamp
+	Dev       uint64
+	Ino       uint64
+	Uid       uint64
+	Gid       uint64
+	Nlink     uint32
+	Username  string
+	Groupname string
+	Flags     uint32
 }
 // type ScanRecordFileInfo = importer.ScanRecordFileInfo
 
@@ -94,7 +120,6 @@ func (s *ReadResponseStramer) Send(resp *importer.ReadResponse) error {
 
 type ReadResponse struct {
 	Data []byte
-	Done bool
 }
 // type ReadResponse = importer.ReadResponse
 
