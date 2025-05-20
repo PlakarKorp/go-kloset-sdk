@@ -37,8 +37,50 @@ func (s *ScanResponseStreamer) Context() context.Context {
 	return s.impl.Context()
 }
 
-func (s *ScanResponseStreamer) Send(resp *importer.ScanResponse) error {
-	return s.impl.Send(resp)
+func (s *ScanResponseStreamer) Send(resp *ScanResponse) error {
+	importerResp := &importer.ScanResponse{
+		Pathname: resp.Pathname,
+	}
+	
+	// Convert the Result field based on its type
+	if record := resp.GetRecord(); record != nil {
+		importerRecord := &importer.ScanRecord{
+			Target:         record.Record.Target,
+			FileAttributes: record.Record.FileAttributes,
+		}
+		if record.Record.Fileinfo != nil {
+			importerRecord.Fileinfo = &importer.ScanRecordFileInfo{
+				Name:      record.Record.Fileinfo.Name,
+				Size:      record.Record.Fileinfo.Size,
+				Mode:      record.Record.Fileinfo.Mode,
+				ModTime:   record.Record.Fileinfo.ModTime,
+				Dev:       record.Record.Fileinfo.Dev,
+				Ino:       record.Record.Fileinfo.Ino,
+				Uid:       record.Record.Fileinfo.Uid,
+				Gid:       record.Record.Fileinfo.Gid,
+				Nlink:     record.Record.Fileinfo.Nlink,
+				Username:  record.Record.Fileinfo.Username,
+				Groupname: record.Record.Fileinfo.Groupname,
+				Flags:     record.Record.Fileinfo.Flags,
+			}
+		}
+		if record.Record.Xattr != nil {
+			importerRecord.Xattr = &importer.ExtendedAttribute{
+				Name: record.Record.Xattr.Name,
+				Type: importer.ExtendedAttributeType(record.Record.Xattr.Type),
+			}
+		}
+		importerResp.Result = &importer.ScanResponse_Record{
+			Record: importerRecord,
+		}
+	} else if err := resp.GetError(); err != nil {
+		importerResp.Result = &importer.ScanResponse_Error{
+			Error: &importer.ScanError{
+				Message: err.Error.Message,
+			},
+		}
+	}
+	return s.impl.Send(importerResp)
 }
 
 // type ScanResponseStreamer = importer.Importer_ScanServer
@@ -82,7 +124,6 @@ type ScanResponseError struct {
 // type ScanResponseError = importer.ScanResponse_Error
 
 type ScanError struct {
-	Code    int32
 	Message string
 }
 
@@ -147,8 +188,11 @@ func (s *ReadResponseStramer) Context() context.Context {
 	return s.impl.Context()
 }
 
-func (s *ReadResponseStramer) Send(resp *importer.ReadResponse) error {
-	return s.impl.Send(resp)
+func (s *ReadResponseStramer) Send(resp *ReadResponse) error {
+	importerResp := &importer.ReadResponse{
+		Data: resp.Data,
+	}
+	return s.impl.Send(importerResp)
 }
 
 // type ReadResponseStramer = importer.Importer_ReadServer
