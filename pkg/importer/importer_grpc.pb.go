@@ -19,10 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	Importer_Info_FullMethodName                   = "/importer.Importer/Info"
-	Importer_Scan_FullMethodName                   = "/importer.Importer/Scan"
-	Importer_Read_FullMethodName                   = "/importer.Importer/Read"
-	Importer_ReadExtendedAttributes_FullMethodName = "/importer.Importer/ReadExtendedAttributes"
+	Importer_Info_FullMethodName = "/importer.Importer/Info"
+	Importer_Scan_FullMethodName = "/importer.Importer/Scan"
+	Importer_Read_FullMethodName = "/importer.Importer/Read"
 )
 
 // ImporterClient is the client API for Importer service.
@@ -32,7 +31,6 @@ type ImporterClient interface {
 	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
 	Scan(ctx context.Context, in *ScanRequest, opts ...grpc.CallOption) (Importer_ScanClient, error)
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (Importer_ReadClient, error)
-	ReadExtendedAttributes(ctx context.Context, in *ReadExtendedAttributesRequest, opts ...grpc.CallOption) (Importer_ReadExtendedAttributesClient, error)
 }
 
 type importerClient struct {
@@ -119,39 +117,6 @@ func (x *importerReadClient) Recv() (*ReadResponse, error) {
 	return m, nil
 }
 
-func (c *importerClient) ReadExtendedAttributes(ctx context.Context, in *ReadExtendedAttributesRequest, opts ...grpc.CallOption) (Importer_ReadExtendedAttributesClient, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Importer_ServiceDesc.Streams[2], Importer_ReadExtendedAttributes_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &importerReadExtendedAttributesClient{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Importer_ReadExtendedAttributesClient interface {
-	Recv() (*ReadExtendedAttributesResponse, error)
-	grpc.ClientStream
-}
-
-type importerReadExtendedAttributesClient struct {
-	grpc.ClientStream
-}
-
-func (x *importerReadExtendedAttributesClient) Recv() (*ReadExtendedAttributesResponse, error) {
-	m := new(ReadExtendedAttributesResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 // ImporterServer is the server API for Importer service.
 // All implementations must embed UnimplementedImporterServer
 // for forward compatibility
@@ -159,7 +124,6 @@ type ImporterServer interface {
 	Info(context.Context, *InfoRequest) (*InfoResponse, error)
 	Scan(*ScanRequest, Importer_ScanServer) error
 	Read(*ReadRequest, Importer_ReadServer) error
-	ReadExtendedAttributes(*ReadExtendedAttributesRequest, Importer_ReadExtendedAttributesServer) error
 	mustEmbedUnimplementedImporterServer()
 }
 
@@ -175,9 +139,6 @@ func (UnimplementedImporterServer) Scan(*ScanRequest, Importer_ScanServer) error
 }
 func (UnimplementedImporterServer) Read(*ReadRequest, Importer_ReadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Read not implemented")
-}
-func (UnimplementedImporterServer) ReadExtendedAttributes(*ReadExtendedAttributesRequest, Importer_ReadExtendedAttributesServer) error {
-	return status.Errorf(codes.Unimplemented, "method ReadExtendedAttributes not implemented")
 }
 func (UnimplementedImporterServer) mustEmbedUnimplementedImporterServer() {}
 
@@ -252,27 +213,6 @@ func (x *importerReadServer) Send(m *ReadResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Importer_ReadExtendedAttributes_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ReadExtendedAttributesRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ImporterServer).ReadExtendedAttributes(m, &importerReadExtendedAttributesServer{ServerStream: stream})
-}
-
-type Importer_ReadExtendedAttributesServer interface {
-	Send(*ReadExtendedAttributesResponse) error
-	grpc.ServerStream
-}
-
-type importerReadExtendedAttributesServer struct {
-	grpc.ServerStream
-}
-
-func (x *importerReadExtendedAttributesServer) Send(m *ReadExtendedAttributesResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 // Importer_ServiceDesc is the grpc.ServiceDesc for Importer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -294,11 +234,6 @@ var Importer_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Read",
 			Handler:       _Importer_Read_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "ReadExtendedAttributes",
-			Handler:       _Importer_ReadExtendedAttributes_Handler,
 			ServerStreams: true,
 		},
 	},
