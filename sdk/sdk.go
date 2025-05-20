@@ -152,9 +152,9 @@ type ExtendedAttribute struct {
 type ExtendedAttributeType int32
 
 const (
-	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_UNSPECIFIED ExtendedAttributeType = 0
-	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_EXTENDED    ExtendedAttributeType = 1
-	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_ADS         ExtendedAttributeType = 2
+	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_EXTENDED    ExtendedAttributeType = 0
+	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_ADS         ExtendedAttributeType = 1
+	ExtendedAttributeType_EXTENDED_ATTRIBUTE_TYPE_UNSPECIFIED ExtendedAttributeType = 2        ExtendedAttributeType = 2
 )
 
 type ScanRecordFileInfo struct {
