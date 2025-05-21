@@ -76,7 +76,7 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporte
 	return &grpc_exporter.CloseResponse{}, nil
 }
 
-func Runexporter(exp plakar_exporter.Exporter) error {
+func RunExporter(exp plakar_exporter.Exporter) error {
 	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
 	if err != nil {
 		return err
