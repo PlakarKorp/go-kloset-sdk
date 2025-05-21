@@ -41,7 +41,7 @@ func (s *ScanResponseStreamer) Send(resp *ScanResponse) error {
 	importerResp := &importer.ScanResponse{
 		Pathname: resp.Pathname,
 	}
-	
+
 	// Convert the Result field based on its type
 	if record := resp.GetRecord(); record != nil {
 		importerRecord := &importer.ScanRecord{
@@ -53,7 +53,7 @@ func (s *ScanResponseStreamer) Send(resp *ScanResponse) error {
 				Name:      record.Record.Fileinfo.Name,
 				Size:      record.Record.Fileinfo.Size,
 				Mode:      record.Record.Fileinfo.Mode,
-				ModTime:   record.Record.Fileinfo.ModTime,
+				ModTime:   timestamppb.New(record.Record.Fileinfo.ModTime),
 				Dev:       record.Record.Fileinfo.Dev,
 				Ino:       record.Record.Fileinfo.Ino,
 				Uid:       record.Record.Fileinfo.Uid,
@@ -92,7 +92,7 @@ type isScanResponse_Result interface {
 
 // Implement the interface for the possible oneof types
 func (*ScanResponseRecord) isScanResponse_Result() {}
-func (*ScanResponseError) isScanResponse_Result() {}
+func (*ScanResponseError) isScanResponse_Result()  {}
 
 type ScanResponse struct {
 	Pathname string
@@ -161,7 +161,7 @@ type ScanRecordFileInfo struct {
 	Name      string
 	Size      int64
 	Mode      uint32
-	ModTime   *timestamppb.Timestamp
+	ModTime   time.Time
 	Dev       uint64
 	Ino       uint64
 	Uid       uint64
@@ -253,10 +253,4 @@ func RunImporter(imp ImporterPlugin) error {
 		return err
 	}
 	return nil
-}
-
-type ImporterTimestamp = *timestamppb.Timestamp
-
-func NewTimestamp(time time.Time) ImporterTimestamp {
-	return timestamppb.New(time)
 }
