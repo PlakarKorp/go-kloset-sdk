@@ -8,7 +8,6 @@ service Importer {
   rpc Info(InfoRequest) returns (InfoResponse);
   rpc Scan(ScanRequest) returns (stream ScanResponse);
   rpc Read(ReadRequest) returns (stream ReadResponse);
-  rpc ReadExtendedAttributes(ReadExtendedAttributesRequest) returns (stream ReadExtendedAttributesResponse);
 }
 
 message InfoRequest {
@@ -79,24 +78,4 @@ message ReadRequest {
 
 message ReadResponse {
   bytes data = 1;
-}
-
-message ReadExtendedAttributesRequest{
-  string pathname = 1;
-  string attribute = 2;
-}
-
-message ReadExtendedAttributesResponse{
-  oneof result {
-    ReadExtendedAttributesEntry entry = 1;
-    ReadExtendedAttributesError error = 2;
-  }
-}
-
-message ReadExtendedAttributesEntry{
-  bytes data = 1;
-}
-
-message ReadExtendedAttributesError{
-  string message = 1;
 }

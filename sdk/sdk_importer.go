@@ -5,12 +5,35 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 
 	grpc_importer "github.com/PlakarKorp/go-kloset-sdk/pkg/importer"
+	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
 )
+
+type singleConnListener struct {
+	conn net.Conn
+	used bool
+}
+
+func (l *singleConnListener) Accept() (net.Conn, error) {
+	if l.used {
+		// to be replaced with cancellation
+		<-make(chan struct{})
+	}
+	l.used = true
+	return l.conn, nil
+}
+
+func (l *singleConnListener) Close() error {
+	return l.conn.Close()
+}
+
+func (l *singleConnListener) Addr() net.Addr {
+	return l.conn.LocalAddr()
+}
 
 type ImporterPluginServer struct {
 	importer plakar_importer.Importer
@@ -31,11 +54,11 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 	if err != nil {
 		return err
 	}
+
 	for result := range scanResult {
 		switch {
 		case result.Record != nil:
 			if err := stream.Context().Err(); err != nil {
-				fmt.Printf("Client connection closed: %v\n", err)
 				return err
 			}
 
@@ -99,7 +122,7 @@ func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream 
 		return err
 	}
 	defer content.Close()
-	
+
 	buffer := make([]byte, 8192)
 	for {
 		n, err := content.Read(buffer)
@@ -109,7 +132,7 @@ func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream 
 			}
 			return err
 		}
-		
+
 		if n > 0 {
 			if err := stream.Send(&grpc_importer.ReadResponse{
 				Data: buffer[:n],
@@ -121,17 +144,24 @@ func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream 
 }
 
 func RunImporter(imp plakar_importer.Importer) error {
-	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
+	file := os.NewFile(3, "grpc-conn")
+	if file == nil {
+		return fmt.Errorf("failed to get file descriptor for fd 3")
+	}
+	defer file.Close()
+
+	conn, err := net.FileConn(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
 	}
 
+	listener := &singleConnListener{conn: conn}
+
 	server := grpc.NewServer()
-	fmt.Printf("server listening on %s\n", listenAddr.Addr())
 
 	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{importer: imp})
 
-	if err := server.Serve(listenAddr); err != nil {
+	if err := server.Serve(listener); err != nil {
 		return err
 	}
 	return nil
