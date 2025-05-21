@@ -6,28 +6,28 @@ import (
 	"io"
 	"net"
 
-	"github.com/PlakarKorp/go-kloset-sdk/pkg/importer"
+	grpc_importer "github.com/PlakarKorp/go-kloset-sdk/pkg/importer"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	impor "github.com/PlakarKorp/plakar/snapshot/importer"
+	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
 )
 
 type ImporterPluginServer struct {
-	imp impor.Importer
+	importer plakar_importer.Importer
 
-	importer.UnimplementedImporterServer
+	grpc_importer.UnimplementedImporterServer
 }
 
-func (plugin *ImporterPluginServer) Info(ctx context.Context, req *importer.InfoRequest) (*importer.InfoResponse, error) {
-	return &importer.InfoResponse{
-		Type:   plugin.imp.Type(),
-		Origin: plugin.imp.Origin(),
-		Root:   plugin.imp.Root(),
+func (plugin *ImporterPluginServer) Info(ctx context.Context, req *grpc_importer.InfoRequest) (*grpc_importer.InfoResponse, error) {
+	return &grpc_importer.InfoResponse{
+		Type:   plugin.importer.Type(),
+		Origin: plugin.importer.Origin(),
+		Root:   plugin.importer.Root(),
 	}, nil
 }
 
-func (plugin *ImporterPluginServer) Scan(req *importer.ScanRequest, stream importer.Importer_ScanServer) error {
-	scanResult, err := plugin.imp.Scan()
+func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream grpc_importer.Importer_ScanServer) error {
+	scanResult, err := plugin.importer.Scan()
 	if err != nil {
 		return err
 	}
@@ -39,22 +39,22 @@ func (plugin *ImporterPluginServer) Scan(req *importer.ScanRequest, stream impor
 				return err
 			}
 
-			var xattr *importer.ExtendedAttribute
+			var xattr *grpc_importer.ExtendedAttribute
 			if result.Record.IsXattr {
-				xattr = &importer.ExtendedAttribute{
+				xattr = &grpc_importer.ExtendedAttribute{
 					Name: result.Record.XattrName,
-					Type: importer.ExtendedAttributeType(result.Record.XattrType),
+					Type: grpc_importer.ExtendedAttributeType(result.Record.XattrType),
 				}
 			} else {
 				xattr = nil
 			}
 
-			if err := stream.Send(&importer.ScanResponse{
+			if err := stream.Send(&grpc_importer.ScanResponse{
 				Pathname: result.Record.Pathname,
-				Result: &importer.ScanResponse_Record{
-					Record: &importer.ScanRecord{
+				Result: &grpc_importer.ScanResponse_Record{
+					Record: &grpc_importer.ScanRecord{
 						Target: result.Record.Target,
-						Fileinfo: &importer.ScanRecordFileInfo{
+						Fileinfo: &grpc_importer.ScanRecordFileInfo{
 							Name:      result.Record.FileInfo.Lname,
 							Size:      result.Record.FileInfo.Lsize,
 							Mode:      uint32(result.Record.FileInfo.Lmode),
@@ -76,10 +76,10 @@ func (plugin *ImporterPluginServer) Scan(req *importer.ScanRequest, stream impor
 				return err
 			}
 		case result.Error != nil:
-			if err := stream.Send(&importer.ScanResponse{
+			if err := stream.Send(&grpc_importer.ScanResponse{
 				Pathname: result.Error.Pathname,
-				Result: &importer.ScanResponse_Error{
-					Error: &importer.ScanError{
+				Result: &grpc_importer.ScanResponse_Error{
+					Error: &grpc_importer.ScanError{
 						Message: result.Error.Err.Error(),
 					},
 				},
@@ -92,8 +92,9 @@ func (plugin *ImporterPluginServer) Scan(req *importer.ScanRequest, stream impor
 	}
 	return nil
 }
-func (plugin *ImporterPluginServer) Read(req *importer.ReadRequest, stream importer.Importer_ReadServer) error {
-	content, err := plugin.imp.NewReader(req.Pathname)
+
+func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream grpc_importer.Importer_ReadServer) error {
+	content, err := plugin.importer.NewReader(req.Pathname)
 	if err != nil {
 		return err
 	}
@@ -110,7 +111,7 @@ func (plugin *ImporterPluginServer) Read(req *importer.ReadRequest, stream impor
 		}
 		
 		if n > 0 {
-			if err := stream.Send(&importer.ReadResponse{
+			if err := stream.Send(&grpc_importer.ReadResponse{
 				Data: buffer[:n],
 			}); err != nil {
 				return err
@@ -119,7 +120,7 @@ func (plugin *ImporterPluginServer) Read(req *importer.ReadRequest, stream impor
 	}
 }
 
-func RunImporter(imp impor.Importer) error {
+func RunImporter(imp plakar_importer.Importer) error {
 	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
 	if err != nil {
 		return err
@@ -128,7 +129,7 @@ func RunImporter(imp impor.Importer) error {
 	server := grpc.NewServer()
 	fmt.Printf("server listening on %s\n", listenAddr.Addr())
 
-	importer.RegisterImporterServer(server, &ImporterPluginServer{imp: imp})
+	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{importer: imp})
 
 	if err := server.Serve(listenAddr); err != nil {
 		return err
