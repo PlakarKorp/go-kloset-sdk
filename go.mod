@@ -4,6 +4,7 @@ go 1.23.3
 
 require (
 	github.com/PlakarKorp/plakar v1.0.1
+	github.com/pkg/xattr v0.4.10
 	google.golang.org/grpc v1.68.0
 	google.golang.org/protobuf v1.36.6
 )
