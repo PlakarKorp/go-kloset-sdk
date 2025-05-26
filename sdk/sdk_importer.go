@@ -5,12 +5,34 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 
 	grpc_importer "github.com/PlakarKorp/go-kloset-sdk/pkg/importer"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
 )
+
+type singleConnListener struct {
+	conn net.Conn
+	used bool
+}
+
+func (l *singleConnListener) Accept() (net.Conn, error) {
+	if l.used {
+		return nil, io.EOF
+	}
+	l.used = true
+	return l.conn, nil
+}
+
+func (l *singleConnListener) Close() error {
+	return l.conn.Close()
+}
+
+func (l *singleConnListener) Addr() net.Addr {
+	return l.conn.LocalAddr()
+}
 
 type ImporterPluginServer struct {
 	importer plakar_importer.Importer
@@ -121,17 +143,25 @@ func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream 
 }
 
 func RunImporter(imp plakar_importer.Importer) error {
-	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
+	file := os.NewFile(0, "grpc-conn")
+	if file == nil {
+		return fmt.Errorf("failed to get file descriptor for fd 0")
+	}
+	defer file.Close()
+
+	conn, err := net.FileConn(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
 	}
 
+	listener := &singleConnListener{conn: conn}
+
 	server := grpc.NewServer()
-	fmt.Printf("server listening on %s\n", listenAddr.Addr())
+	fmt.Printf("server using single connection on fd %d\n", file.Fd())
 
 	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{importer: imp})
 
-	if err := server.Serve(listenAddr); err != nil {
+	if err := server.Serve(listener); err != nil {
 		return err
 	}
 	return nil
