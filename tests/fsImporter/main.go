@@ -1,23 +1,23 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
-	"bytes"
-	"path"
-	"runtime"
 
 	"github.com/PlakarKorp/go-kloset-sdk/sdk"
-	"github.com/PlakarKorp/plakar/snapshot/importer"
-	"github.com/pkg/xattr"
 	"github.com/PlakarKorp/plakar/appcontext"
 	"github.com/PlakarKorp/plakar/objects"
+	"github.com/PlakarKorp/plakar/snapshot/importer"
+	"github.com/pkg/xattr"
 )
 
 type FSImporter struct {
@@ -173,7 +173,6 @@ func walkDir_addPrefixDirectories(rootDir string, jobs chan<- string, results ch
 	}
 }
 
-
 func (p *FSImporter) lookupIDs(uid, gid uint64) (uname, gname string) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -257,7 +256,6 @@ func (p *FSImporter) Root() string {
 	return p.rootDir
 }
 
-
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Printf("Usage: %s <scan-dir>\n", os.Args[0])
@@ -265,6 +263,7 @@ func main() {
 	}
 
 	scanDir := os.Args[1]
+
 	fsImporter, err := NewFSImporter(appcontext.NewAppContext(), "fs", map[string]string{"location": scanDir})
 	if err != nil {
 		panic(err)

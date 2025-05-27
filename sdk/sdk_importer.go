@@ -8,9 +8,9 @@ import (
 	"os"
 
 	grpc_importer "github.com/PlakarKorp/go-kloset-sdk/pkg/importer"
+	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
 )
 
 type singleConnListener struct {
@@ -20,7 +20,8 @@ type singleConnListener struct {
 
 func (l *singleConnListener) Accept() (net.Conn, error) {
 	if l.used {
-		return nil, io.EOF
+		// to be replaced with cancellation
+		<-make(chan struct{})
 	}
 	l.used = true
 	return l.conn, nil
@@ -53,11 +54,11 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 	if err != nil {
 		return err
 	}
+
 	for result := range scanResult {
 		switch {
 		case result.Record != nil:
 			if err := stream.Context().Err(); err != nil {
-				fmt.Printf("Client connection closed: %v\n", err)
 				return err
 			}
 
@@ -121,7 +122,7 @@ func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream 
 		return err
 	}
 	defer content.Close()
-	
+
 	buffer := make([]byte, 8192)
 	for {
 		n, err := content.Read(buffer)
@@ -131,7 +132,7 @@ func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream 
 			}
 			return err
 		}
-		
+
 		if n > 0 {
 			if err := stream.Send(&grpc_importer.ReadResponse{
 				Data: buffer[:n],
@@ -143,9 +144,9 @@ func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream 
 }
 
 func RunImporter(imp plakar_importer.Importer) error {
-	file := os.NewFile(0, "grpc-conn")
+	file := os.NewFile(3, "grpc-conn")
 	if file == nil {
-		return fmt.Errorf("failed to get file descriptor for fd 0")
+		return fmt.Errorf("failed to get file descriptor for fd 3")
 	}
 	defer file.Close()
 
@@ -157,7 +158,6 @@ func RunImporter(imp plakar_importer.Importer) error {
 	listener := &singleConnListener{conn: conn}
 
 	server := grpc.NewServer()
-	fmt.Printf("server using single connection on fd %d\n", file.Fd())
 
 	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{importer: imp})
 
