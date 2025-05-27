@@ -262,9 +262,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	scanDir := os.Args[1]
+	argStr := os.Args[1]
+	argStr = strings.TrimPrefix(argStr, "map[")
+	argStr = strings.TrimSuffix(argStr, "]")
+	scanMap := make(map[string]string)
+	for _, pair := range strings.Fields(argStr) {
+		kv := strings.SplitN(pair, ":", 2)
+		if len(kv) == 2 {
+			scanMap[kv[0]] = kv[1]
+		}
+	}
 
-	fsImporter, err := NewFSImporter(appcontext.NewAppContext(), "fs", map[string]string{"location": scanDir})
+	fsImporter, err := NewFSImporter(appcontext.NewAppContext(), "fs", scanMap)
 	if err != nil {
 		panic(err)
 	}
