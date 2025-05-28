@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"net"
+	"os"
 
 	grpc_exporter "github.com/PlakarKorp/go-kloset-sdk/pkg/exporter"
 	"github.com/PlakarKorp/plakar/objects"
@@ -35,15 +36,39 @@ func (plugin *exporterPluginServer) CreateDirectory(ctx context.Context, req *gr
 }
 
 func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_StoreFileServer) error {
-	req, err := stream.Recv()
-	if err != nil {
+	var pathname string
+	var size int64
+	var buf bytes.Buffer
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if pathname == "" {
+			pathname = req.Pathname
+			size = int64(req.Size)
+		}
+
+		if req.Fp != nil && len(req.Fp.Chunk) > 0 {
+			if _, err := buf.Write(req.Fp.Chunk); err != nil {
+				return err
+			}
+		}
+	}
+
+	if pathname == "" {
+		return fmt.Errorf("no pathname provided")
+	}
+
+	if err := plugin.exporter.StoreFile(pathname, &buf, size); err != nil {
 		return err
 	}
-	fp := io.Reader(bytes.NewReader(req.Fp.Chunk))
-	if req.Fp.Chunk == nil {
-		return fmt.Errorf("no file data")
-	}
-	plugin.exporter.StoreFile(req.Pathname, fp, int64(req.Size))
+
 	return stream.SendAndClose(&grpc_exporter.StoreFileResponse{})
 }
 
@@ -77,17 +102,24 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporte
 }
 
 func RunExporter(exp plakar_exporter.Exporter) error {
-	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
+	file := os.NewFile(3, "grpc-conn")
+	if file == nil {
+		return fmt.Errorf("failed to get file descriptor for fd 3")
+	}
+	defer file.Close()
+
+	conn, err := net.FileConn(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
 	}
 
+	listener := &singleConnListener{conn: conn}
+
 	server := grpc.NewServer()
-	fmt.Printf("server listening on %s\n", listenAddr.Addr())
 
 	grpc_exporter.RegisterExporterServer(server, &exporterPluginServer{exporter: exp})
 
-	if err := server.Serve(listenAddr); err != nil {
+	if err := server.Serve(listener); err != nil {
 		return err
 	}
 	return nil
