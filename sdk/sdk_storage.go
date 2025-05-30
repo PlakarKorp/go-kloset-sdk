@@ -5,12 +5,13 @@ import (
 	"context"
 	"fmt"
 	grpc_storage "github.com/PlakarKorp/go-kloset-sdk/pkg/store"
-	"github.com/PlakarKorp/plakar/appcontext"
-	"github.com/PlakarKorp/plakar/objects"
-	plakar_storage "github.com/PlakarKorp/plakar/storage"
+	kloset_appcontext "github.com/PlakarKorp/kloset/appcontext"
+	"github.com/PlakarKorp/kloset/objects"
+	plakar_storage "github.com/PlakarKorp/kloset/storage"
 	"google.golang.org/grpc"
 	"io"
 	"net"
+	"os"
 )
 
 //type StoreServer interface {
@@ -43,7 +44,7 @@ type StoragePluginServer struct {
 }
 
 func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
-	err := plugin.storage.Create(appcontext.NewAppContext(), req.Config)
+	err := plugin.storage.Create(kloset_appcontext.NewAppContext(), req.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage
 }
 
 func (plugin *StoragePluginServer) Open(ctx context.Context, req *grpc_storage.OpenRequest) (*grpc_storage.OpenResponse, error) {
-	b, err := plugin.storage.Open(appcontext.NewAppContext())
+	b, err := plugin.storage.Open(kloset_appcontext.NewAppContext())
 	if err != nil {
 		return nil, err
 	}
@@ -382,17 +383,24 @@ func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_sto
 }
 
 func RunStorage(storage plakar_storage.Store) error {
-	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
+	file := os.NewFile(3, "grpc-conn")
+	if file == nil {
+		return fmt.Errorf("failed to get file descriptor for fd 3")
+	}
+	defer file.Close()
+
+	conn, err := net.FileConn(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
 	}
 
+	listener := &singleConnListener{conn: conn}
+
 	server := grpc.NewServer()
-	fmt.Printf("server listening on %s\n", listenAddr.Addr())
 
 	grpc_storage.RegisterStoreServer(server, &StoragePluginServer{storage: storage})
 
-	if err := server.Serve(listenAddr); err != nil {
+	if err := server.Serve(listener); err != nil {
 		return err
 	}
 	return nil

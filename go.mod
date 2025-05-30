@@ -3,6 +3,7 @@ module github.com/PlakarKorp/go-kloset-sdk
 go 1.23.3
 
 require (
+	github.com/PlakarKorp/kloset v1.0.1-beta.1
 	github.com/PlakarKorp/plakar v1.0.1
 	github.com/pkg/xattr v0.4.10
 	google.golang.org/grpc v1.68.0
@@ -12,7 +13,6 @@ require (
 require (
 	github.com/DataDog/zstd v1.5.6 // indirect
 	github.com/PlakarKorp/go-cdc-chunkers v0.0.10 // indirect
-	github.com/PlakarKorp/kloset v1.0.1-beta.1 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -68,5 +68,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/PlakarKorp/kloset => /Users/gilles/Wip/github.com/PlakarKorp/kloset
