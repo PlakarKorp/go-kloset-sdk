@@ -77,9 +77,9 @@ func (plugin *StoragePluginServer) GetLocation(ctx context.Context, req *grpc_st
 }
 
 func (plugin *StoragePluginServer) GetMode(ctx context.Context, req *grpc_storage.GetModeRequest) (*grpc_storage.GetModeResponse, error) {
-	// mode := plugin.storage.Mode()
+	mode := plugin.storage.Mode()
 	return &grpc_storage.GetModeResponse{
-		Mode: int32(plakar_storage.ModeWrite | plakar_storage.ModeRead),
+		Mode: int32(mode),
 	}, nil
 }
 
@@ -112,21 +112,18 @@ func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_stor
 }
 
 func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
-	var size int64
 	var buffer bytes.Buffer
 	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-
-		mac = objects.MAC(req.Mac.Value)
-
 		if err == io.EOF {
 			break
 		}
+		if err != nil {
+			return err
+		}
+		mac = objects.MAC(req.Mac.Value)
 
 		_, err = buffer.Write(req.Chunk)
 		if err != nil {
@@ -134,8 +131,7 @@ func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 		}
 	}
 
-	s, err := plugin.storage.PutState(mac, bytes.NewReader(buffer.Bytes()))
-	size += s
+	size, err := plugin.storage.PutState(mac, bytes.NewReader(buffer.Bytes()))
 	if err != nil {
 		return err
 	}
@@ -207,22 +203,18 @@ func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_s
 }
 
 func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
-	var size int64
 	var buffer bytes.Buffer
 	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-
-		mac = objects.MAC(req.Mac.Value)
-		fmt.Printf("Received chunk for MAC: %x\n", mac)
-
 		if err == io.EOF {
 			break
 		}
+		if err != nil {
+			return err
+		}
+		mac = objects.MAC(req.Mac.Value)
 
 		_, err = buffer.Write(req.Chunk)
 		if err != nil {
@@ -230,8 +222,7 @@ func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 		}
 	}
 
-	s, err := plugin.storage.PutPackfile(mac, bytes.NewReader(buffer.Bytes()))
-	size += s
+	size, err := plugin.storage.PutPackfile(mac, bytes.NewReader(buffer.Bytes()))
 	if err != nil {
 		return err
 	}
@@ -339,15 +330,13 @@ func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 
 	for {
 		req, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-
-		mac = objects.MAC(req.Mac.Value)
-
 		if err == io.EOF {
 			break
 		}
+		if err != nil {
+			return err
+		}
+		mac = objects.MAC(req.Mac.Value)
 
 		_, err = buffer.Write(req.Chunk)
 		if err != nil {
