@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 	grpc_storage "github.com/PlakarKorp/go-kloset-sdk/pkg/store"
-	"github.com/PlakarKorp/kloset/appcontext"
-	"github.com/PlakarKorp/kloset/objects"
-	plakar_storage "github.com/PlakarKorp/kloset/storage"
+	"github.com/PlakarKorp/plakar/appcontext"
+	"github.com/PlakarKorp/plakar/objects"
+	plakar_storage "github.com/PlakarKorp/plakar/storage"
 	"google.golang.org/grpc"
 	"io"
 	"net"
@@ -78,7 +78,7 @@ func (plugin *StoragePluginServer) GetLocation(ctx context.Context, req *grpc_st
 func (plugin *StoragePluginServer) GetMode(ctx context.Context, req *grpc_storage.GetModeRequest) (*grpc_storage.GetModeResponse, error) {
 	mode := plugin.storage.Mode()
 	return &grpc_storage.GetModeResponse{
-		Mode: grpc_storage.Mode(mode),
+		Mode: int32(mode),
 	}, nil
 }
 
@@ -400,24 +400,17 @@ func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_sto
 }
 
 func RunStorage(storage plakar_storage.Store) error {
-	file := os.NewFile(3, "grpc-conn")
-	if file == nil {
-		return fmt.Errorf("failed to get file descriptor for fd 3")
-	}
-	defer file.Close()
-
-	conn, err := net.FileConn(file)
+	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
 	if err != nil {
-		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
+		return err
 	}
-
-	listener := &singleConnListener{conn: conn}
 
 	server := grpc.NewServer()
+	fmt.Printf("server listening on %s\n", listenAddr.Addr())
 
 	grpc_storage.RegisterStoreServer(server, &StoragePluginServer{storage: storage})
 
-	if err := server.Serve(listener); err != nil {
+	if err := server.Serve(listenAddr); err != nil {
 		return err
 	}
 	return nil

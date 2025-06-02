@@ -3,12 +3,6 @@ syntax = "proto3";
 package store;
 
 
-enum Mode {
-    MODE_UNSPECIFIED = 0;
-    MODE_READ_ONLY = 1;
-    MODE_READ_WRITE = 2;
-}
-
 message MAC {
     bytes value = 1;
 }
@@ -64,7 +58,7 @@ message GetLocationResponse {
 message GetModeRequest {}
 
 message GetModeResponse {
-    Mode mode = 1;
+    int32 mode = 1;
 }
 
 message GetSizeRequest {}
