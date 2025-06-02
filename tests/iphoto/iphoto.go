@@ -18,10 +18,8 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
-	"github.com/PlakarKorp/plakar/appcontext"
-	"github.com/PlakarKorp/plakar/objects"
-	"github.com/PlakarKorp/plakar/snapshot/importer"
 	"io"
 	"os"
 	"os/exec"
@@ -31,7 +29,11 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
 	"github.com/PlakarKorp/go-kloset-sdk/sdk"
+	"github.com/PlakarKorp/kloset/kcontext"
+	"github.com/PlakarKorp/kloset/objects"
+	"github.com/PlakarKorp/kloset/snapshot/importer"
 )
 
 type iCloudPhotoImporter struct {
@@ -41,7 +43,7 @@ type iCloudPhotoImporter struct {
 	ino uint64
 }
 
-func NewiCloudPhotoImporter(appCtx *appcontext.AppContext, name string, config map[string]string) (importer.Importer, error) {
+func NewiCloudPhotoImporter(ctx context.Context, opts *importer.Options, name string, config map[string]string) (importer.Importer, error) {
 	directory := filepath.Join(os.TempDir(), "plakar-icloudpd")
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create directory %s: %w", directory, err)
@@ -125,7 +127,7 @@ func (p *iCloudPhotoImporter) Scan() (<-chan *importer.ScanResult, error) {
 		0,
 		0,
 	)
-	results <- importer.NewScanRecord("/", "", fi, nil)
+	results <- importer.NewScanRecord("/", "", fi, nil, nil)
 
 	createdPaths := make(map[string]bool)
 
@@ -169,12 +171,13 @@ func (p *iCloudPhotoImporter) Scan() (<-chan *importer.ScanResult, error) {
 								Lusername:  "",
 								Lgroupname: "",
 							}
-							results <- &importer.ScanResult{
-								Record: &importer.ScanRecord{
-									Pathname: "/" + currentPath,
-									FileInfo: fi,
-								},
-							}
+							results <- importer.NewScanRecord("/"+currentPath, "", fi, nil, func() (io.ReadCloser, error) {
+								rc := p.NewReader("/" + currentPath)
+								if rc == nil {
+									return nil, fmt.Errorf("failed to open reader for %s", "/"+currentPath)
+								}
+								return rc, nil
+							})
 							break
 						}
 						if !createdPaths[currentPath] {
@@ -190,7 +193,7 @@ func (p *iCloudPhotoImporter) Scan() (<-chan *importer.ScanResult, error) {
 								0,
 								0,
 							)
-							results <- importer.NewScanRecord("/"+currentPath, "", fi, nil)
+							results <- importer.NewScanRecord("/"+currentPath, "", fi, nil, nil)
 						}
 					}
 				}
@@ -213,20 +216,20 @@ func (p *iCloudPhotoImporter) Scan() (<-chan *importer.ScanResult, error) {
 	return results, nil
 }
 
-func (p *iCloudPhotoImporter) NewReader(pathname string) (io.ReadCloser, error) {
+func (p *iCloudPhotoImporter) NewReader(pathname string) (io.ReadCloser) {
 	if pathname == "/" {
-		return nil, fmt.Errorf("cannot read root directory")
+		return nil
 	}
 	if strings.HasSuffix(pathname, "/") {
-		return nil, fmt.Errorf("cannot read directory")
+		return nil
 	}
 	pathname = p.TempDir + pathname
 
 	file, err := os.Open(pathname)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %s: %w", pathname, err)
+		return nil
 	}
-	return io.NopCloser(file), nil
+	return io.NopCloser(file)
 }
 
 func (p *iCloudPhotoImporter) NewExtendedAttributeReader(pathname string, attribute string) (io.ReadCloser, error) {
@@ -272,7 +275,7 @@ func main() {
 			scanMap[kv[0]] = kv[1]
 		}
 	}
-	icloudImporter, err := NewiCloudPhotoImporter(appcontext.NewAppContext(), "iphoto", scanMap)
+	icloudImporter, err := NewiCloudPhotoImporter(kcontext.NewKContext(), nil, "iphoto", scanMap)
 	if err != nil {
 		panic(err)
 	}

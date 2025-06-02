@@ -19,9 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	Importer_Info_FullMethodName = "/importer.Importer/Info"
-	Importer_Scan_FullMethodName = "/importer.Importer/Scan"
-	Importer_Read_FullMethodName = "/importer.Importer/Read"
+	Importer_Info_FullMethodName        = "/importer.Importer/Info"
+	Importer_Scan_FullMethodName        = "/importer.Importer/Scan"
+	Importer_OpenReader_FullMethodName  = "/importer.Importer/OpenReader"
+	Importer_CloseReader_FullMethodName = "/importer.Importer/CloseReader"
+	Importer_Close_FullMethodName       = "/importer.Importer/Close"
 )
 
 // ImporterClient is the client API for Importer service.
@@ -30,7 +32,9 @@ const (
 type ImporterClient interface {
 	Info(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
 	Scan(ctx context.Context, in *ScanRequest, opts ...grpc.CallOption) (Importer_ScanClient, error)
-	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (Importer_ReadClient, error)
+	OpenReader(ctx context.Context, in *OpenReaderRequest, opts ...grpc.CallOption) (Importer_OpenReaderClient, error)
+	CloseReader(ctx context.Context, in *CloseReaderRequest, opts ...grpc.CallOption) (*CloseReaderResponse, error)
+	Close(ctx context.Context, in *CloseRequest, opts ...grpc.CallOption) (*CloseResponse, error)
 }
 
 type importerClient struct {
@@ -84,13 +88,13 @@ func (x *importerScanClient) Recv() (*ScanResponse, error) {
 	return m, nil
 }
 
-func (c *importerClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (Importer_ReadClient, error) {
+func (c *importerClient) OpenReader(ctx context.Context, in *OpenReaderRequest, opts ...grpc.CallOption) (Importer_OpenReaderClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Importer_ServiceDesc.Streams[1], Importer_Read_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Importer_ServiceDesc.Streams[1], Importer_OpenReader_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &importerReadClient{ClientStream: stream}
+	x := &importerOpenReaderClient{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -100,21 +104,41 @@ func (c *importerClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc
 	return x, nil
 }
 
-type Importer_ReadClient interface {
-	Recv() (*ReadResponse, error)
+type Importer_OpenReaderClient interface {
+	Recv() (*OpenReaderResponse, error)
 	grpc.ClientStream
 }
 
-type importerReadClient struct {
+type importerOpenReaderClient struct {
 	grpc.ClientStream
 }
 
-func (x *importerReadClient) Recv() (*ReadResponse, error) {
-	m := new(ReadResponse)
+func (x *importerOpenReaderClient) Recv() (*OpenReaderResponse, error) {
+	m := new(OpenReaderResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *importerClient) CloseReader(ctx context.Context, in *CloseReaderRequest, opts ...grpc.CallOption) (*CloseReaderResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CloseReaderResponse)
+	err := c.cc.Invoke(ctx, Importer_CloseReader_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *importerClient) Close(ctx context.Context, in *CloseRequest, opts ...grpc.CallOption) (*CloseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CloseResponse)
+	err := c.cc.Invoke(ctx, Importer_Close_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // ImporterServer is the server API for Importer service.
@@ -123,7 +147,9 @@ func (x *importerReadClient) Recv() (*ReadResponse, error) {
 type ImporterServer interface {
 	Info(context.Context, *InfoRequest) (*InfoResponse, error)
 	Scan(*ScanRequest, Importer_ScanServer) error
-	Read(*ReadRequest, Importer_ReadServer) error
+	OpenReader(*OpenReaderRequest, Importer_OpenReaderServer) error
+	CloseReader(context.Context, *CloseReaderRequest) (*CloseReaderResponse, error)
+	Close(context.Context, *CloseRequest) (*CloseResponse, error)
 	mustEmbedUnimplementedImporterServer()
 }
 
@@ -137,8 +163,14 @@ func (UnimplementedImporterServer) Info(context.Context, *InfoRequest) (*InfoRes
 func (UnimplementedImporterServer) Scan(*ScanRequest, Importer_ScanServer) error {
 	return status.Errorf(codes.Unimplemented, "method Scan not implemented")
 }
-func (UnimplementedImporterServer) Read(*ReadRequest, Importer_ReadServer) error {
-	return status.Errorf(codes.Unimplemented, "method Read not implemented")
+func (UnimplementedImporterServer) OpenReader(*OpenReaderRequest, Importer_OpenReaderServer) error {
+	return status.Errorf(codes.Unimplemented, "method OpenReader not implemented")
+}
+func (UnimplementedImporterServer) CloseReader(context.Context, *CloseReaderRequest) (*CloseReaderResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CloseReader not implemented")
+}
+func (UnimplementedImporterServer) Close(context.Context, *CloseRequest) (*CloseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Close not implemented")
 }
 func (UnimplementedImporterServer) mustEmbedUnimplementedImporterServer() {}
 
@@ -192,25 +224,61 @@ func (x *importerScanServer) Send(m *ScanResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Importer_Read_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ReadRequest)
+func _Importer_OpenReader_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(OpenReaderRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ImporterServer).Read(m, &importerReadServer{ServerStream: stream})
+	return srv.(ImporterServer).OpenReader(m, &importerOpenReaderServer{ServerStream: stream})
 }
 
-type Importer_ReadServer interface {
-	Send(*ReadResponse) error
+type Importer_OpenReaderServer interface {
+	Send(*OpenReaderResponse) error
 	grpc.ServerStream
 }
 
-type importerReadServer struct {
+type importerOpenReaderServer struct {
 	grpc.ServerStream
 }
 
-func (x *importerReadServer) Send(m *ReadResponse) error {
+func (x *importerOpenReaderServer) Send(m *OpenReaderResponse) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func _Importer_CloseReader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseReaderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ImporterServer).CloseReader(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Importer_CloseReader_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ImporterServer).CloseReader(ctx, req.(*CloseReaderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Importer_Close_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ImporterServer).Close(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Importer_Close_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ImporterServer).Close(ctx, req.(*CloseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // Importer_ServiceDesc is the grpc.ServiceDesc for Importer service.
@@ -224,6 +292,14 @@ var Importer_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Info",
 			Handler:    _Importer_Info_Handler,
 		},
+		{
+			MethodName: "CloseReader",
+			Handler:    _Importer_CloseReader_Handler,
+		},
+		{
+			MethodName: "Close",
+			Handler:    _Importer_Close_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -232,8 +308,8 @@ var Importer_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 		{
-			StreamName:    "Read",
-			Handler:       _Importer_Read_Handler,
+			StreamName:    "OpenReader",
+			Handler:       _Importer_OpenReader_Handler,
 			ServerStreams: true,
 		},
 	},

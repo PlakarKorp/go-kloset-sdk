@@ -3,40 +3,19 @@ package sdk
 import (
 	"context"
 	"fmt"
-	"io"
-	"net"
-	"os"
-
-	grpc_importer "github.com/PlakarKorp/go-kloset-sdk/pkg/importer"
-	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
+	kloset_importer "github.com/PlakarKorp/kloset/snapshot/importer"
+	grpc_importer "github.com/PlakarKorp/plakar/connectors/grpc/importer/pkg"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"io"
+	"os"
+	"sync"
 )
 
-type singleConnListener struct {
-	conn net.Conn
-	used bool
-}
-
-func (l *singleConnListener) Accept() (net.Conn, error) {
-	if l.used {
-		// to be replaced with cancellation
-		<-make(chan struct{})
-	}
-	l.used = true
-	return l.conn, nil
-}
-
-func (l *singleConnListener) Close() error {
-	return l.conn.Close()
-}
-
-func (l *singleConnListener) Addr() net.Addr {
-	return l.conn.LocalAddr()
-}
-
 type ImporterPluginServer struct {
-	importer plakar_importer.Importer
+	importer       kloset_importer.Importer
+	mu             sync.Mutex
+	holdingReaders map[string]io.ReadCloser
 
 	grpc_importer.UnimplementedImporterServer
 }
@@ -50,12 +29,17 @@ func (plugin *ImporterPluginServer) Info(ctx context.Context, req *grpc_importer
 }
 
 func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream grpc_importer.Importer_ScanServer) error {
-	scanResult, err := plugin.importer.Scan()
+	scanResults, err := plugin.importer.Scan()
 	if err != nil {
 		return err
 	}
 
-	for result := range scanResult {
+	for result := range scanResults {
+
+		if err := stream.Context().Err(); err != nil {
+			return err
+		}
+
 		switch {
 		case result.Record != nil:
 			if err := stream.Context().Err(); err != nil {
@@ -68,11 +52,9 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 					Name: result.Record.XattrName,
 					Type: grpc_importer.ExtendedAttributeType(result.Record.XattrType),
 				}
-			} else {
-				xattr = nil
 			}
 
-			if err := stream.Send(&grpc_importer.ScanResponse{
+			ret := &grpc_importer.ScanResponse{
 				Pathname: result.Record.Pathname,
 				Result: &grpc_importer.ScanResponse_Record{
 					Record: &grpc_importer.ScanRecord{
@@ -95,18 +77,28 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 						Xattr:          xattr,
 					},
 				},
-			}); err != nil {
+			}
+
+			if result.Record.FileInfo.Mode()&os.ModeDir != 0 {
+			} else {
+				plugin.mu.Lock()
+				plugin.holdingReaders[result.Record.Pathname] = result.Record.Reader //THE PROGRAM BLOCK HERE
+				plugin.mu.Unlock()
+			}
+			if err := stream.Send(ret); err != nil {
 				return err
 			}
+
 		case result.Error != nil:
-			if err := stream.Send(&grpc_importer.ScanResponse{
+			ret := &grpc_importer.ScanResponse{
 				Pathname: result.Error.Pathname,
 				Result: &grpc_importer.ScanResponse_Error{
 					Error: &grpc_importer.ScanError{
 						Message: result.Error.Err.Error(),
 					},
 				},
-			}); err != nil {
+			}
+			if err := stream.Send(ret); err != nil {
 				return err
 			}
 		default:
@@ -116,50 +108,78 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 	return nil
 }
 
-func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream grpc_importer.Importer_ReadServer) error {
-	content, err := plugin.importer.NewReader(req.Pathname)
-	if err != nil {
-		return err
+func (plugin *ImporterPluginServer) OpenReader(req *grpc_importer.OpenReaderRequest, stream grpc_importer.Importer_OpenReaderServer) error {
+	pathname := req.Pathname
+
+	plugin.mu.Lock()
+	defer plugin.mu.Unlock()
+	reader, ok := plugin.holdingReaders[pathname]
+	if !ok {
+		return fmt.Errorf("no reader for pathname %s", pathname)
 	}
-	defer content.Close()
 
-	buffer := make([]byte, 8192)
+	buf := make([]byte, 16*1024) // 16KB buffer
 	for {
-		n, err := content.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
+		n, err := reader.Read(buf)
 		if n > 0 {
-			if err := stream.Send(&grpc_importer.ReadResponse{
-				Data: buffer[:n],
-			}); err != nil {
+			if err := stream.Send(&grpc_importer.OpenReaderResponse{Chunk: buf[:n]}); err != nil {
 				return err
 			}
 		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func RunImporter(imp plakar_importer.Importer) error {
-	file := os.NewFile(3, "grpc-conn")
-	if file == nil {
-		return fmt.Errorf("failed to get file descriptor for fd 3")
-	}
-	defer file.Close()
+func (plugin *ImporterPluginServer) CloseReader(ctx context.Context, req *grpc_importer.CloseReaderRequest) (*grpc_importer.CloseReaderResponse, error) {
+	pathname := req.Pathname
 
-	conn, err := net.FileConn(file)
+	plugin.mu.Lock()
+	defer plugin.mu.Unlock()
+	if reader, ok := plugin.holdingReaders[pathname]; ok {
+		if err := reader.Close(); err != nil {
+			return nil, err
+		}
+		delete(plugin.holdingReaders, pathname)
+	}
+
+	return &grpc_importer.CloseReaderResponse{}, nil
+}
+
+func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importer.CloseRequest) (*grpc_importer.CloseResponse, error) {
+	plugin.mu.Lock()
+	defer plugin.mu.Unlock()
+	for _, reader := range plugin.holdingReaders {
+		if err := reader.Close(); err != nil {
+			return nil, err
+		}
+	}
+	plugin.holdingReaders = make(map[string]io.ReadCloser)
+
+	if err := plugin.importer.Close(); err != nil {
+		return nil, err
+	}
+
+	return &grpc_importer.CloseResponse{}, nil
+}
+
+func RunImporter(imp kloset_importer.Importer) error {
+	conn, listener, err := InitConn()
 	if err != nil {
-		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
+		return fmt.Errorf("failed to initialize connection: %w", err)
 	}
-
-	listener := &singleConnListener{conn: conn}
+	defer conn.Close()
 
 	server := grpc.NewServer()
-
-	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{importer: imp})
+	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{
+		importer:       imp,
+		holdingReaders: make(map[string]io.ReadCloser),
+	})
 
 	if err := server.Serve(listener); err != nil {
 		return err

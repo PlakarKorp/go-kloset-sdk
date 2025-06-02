@@ -7,17 +7,16 @@ import (
 	"strings"
 
 	"github.com/PlakarKorp/go-kloset-sdk/sdk"
-	"github.com/PlakarKorp/plakar/appcontext"
-	"github.com/PlakarKorp/plakar/objects"
-	"github.com/PlakarKorp/plakar/snapshot/exporter"
+	"github.com/PlakarKorp/kloset/kcontext"
+	"github.com/PlakarKorp/kloset/objects"
+	"github.com/PlakarKorp/kloset/snapshot/exporter"
 )
-
 
 type FSExporter struct {
 	rootDir string
 }
 
-func NewFSExporter(appCtx *appcontext.AppContext, name string, config map[string]string) (exporter.Exporter, error) {
+func NewFSExporter(appCtx *kcontext.KContext, opts *exporter.Options, name string, config map[string]string) (exporter.Exporter, error) {
 	return &FSExporter{
 		rootDir: strings.TrimPrefix(config["location"], "fis://"),
 	}, nil
@@ -77,7 +76,7 @@ func main() {
 		}
 	}
 
-	fsExporter, err := NewFSExporter(appcontext.NewAppContext(), "fis", scanMap)
+	fsExporter, err := NewFSExporter(kcontext.NewKContext(), nil, "fs", scanMap)
 	if err != nil {
 		panic(err)
 	}

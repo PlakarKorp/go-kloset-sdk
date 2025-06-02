@@ -7,7 +7,9 @@ import "google/protobuf/timestamp.proto";
 service Importer {
   rpc Info(InfoRequest) returns (InfoResponse);
   rpc Scan(ScanRequest) returns (stream ScanResponse);
-  rpc Read(ReadRequest) returns (stream ReadResponse);
+  rpc OpenReader(OpenReaderRequest) returns (stream OpenReaderResponse);
+  rpc CloseReader(CloseReaderRequest) returns (CloseReaderResponse);
+  rpc Close(CloseRequest) returns (CloseResponse);
 }
 
 message InfoRequest {
@@ -41,6 +43,9 @@ message ScanRecord {
   optional ExtendedAttribute xattr = 4;
 }
 
+message EOFResponse {
+}
+
 enum ExtendedAttributeType {
   EXTENDED_ATTRIBUTE_TYPE_UNSPECIFIED = 0;
   EXTENDED_ATTRIBUTE_TYPE_EXTENDED = 1;
@@ -72,10 +77,24 @@ message ScanResponseError {
   int64 size = 3;
 }
 
-message ReadRequest {
+
+message OpenReaderRequest {
   string pathname = 1;
 }
 
-message ReadResponse {
-  bytes data = 1;
+message OpenReaderResponse {
+  bytes chunk = 1;
+}
+
+message CloseReaderRequest {
+  string pathname = 1;
+}
+
+message CloseReaderResponse {
+}
+
+message CloseRequest {
+}
+
+message CloseResponse {
 }

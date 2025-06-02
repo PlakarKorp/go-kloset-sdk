@@ -4,37 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	grpc_storage "github.com/PlakarKorp/go-kloset-sdk/pkg/store"
-	"github.com/PlakarKorp/plakar/appcontext"
-	"github.com/PlakarKorp/plakar/objects"
-	plakar_storage "github.com/PlakarKorp/plakar/storage"
-	"google.golang.org/grpc"
 	"io"
-	"net"
-)
 
-//type StoreServer interface {
-//	Create(context.Context, *CreateRequest) (*CreateResponse, error)
-//	Open(context.Context, *OpenRequest) (*OpenResponse, error)
-//	Close(context.Context, *CloseRequest) (*CloseResponse, error)
-//	GetLocation(context.Context, *GetLocationRequest) (*GetLocationResponse, error)
-//	GetMode(context.Context, *GetModeRequest) (*GetModeResponse, error)
-//	GetSize(context.Context, *GetSizeRequest) (*GetSizeResponse, error)
-//	GetStates(context.Context, *GetStatesRequest) (*GetStatesResponse, error)
-//	PutState(Store_PutStateServer) error
-//	GetState(*GetStateRequest, Store_GetStateServer) error
-//	DeleteState(context.Context, *DeleteStateRequest) (*DeleteStateResponse, error)
-//	GetPackfiles(context.Context, *GetPackfilesRequest) (*GetPackfilesResponse, error)
-//	PutPackfile(Store_PutPackfileServer) error
-//	GetPackfile(*GetPackfileRequest, Store_GetPackfileServer) error
-//	GetPackfileBlob(*GetPackfileBlobRequest, Store_GetPackfileBlobServer) error
-//	DeletePackfile(context.Context, *DeletePackfileRequest) (*DeletePackfileResponse, error)
-//	GetLocks(context.Context, *GetLocksRequest) (*GetLocksResponse, error)
-//	PutLock(Store_PutLockServer) error
-//	GetLock(*GetLockRequest, Store_GetLockServer) error
-//	DeleteLock(context.Context, *DeleteLockRequest) (*DeleteLockResponse, error)
-//	mustEmbedUnimplementedStoreServer()
-//}
+	"github.com/PlakarKorp/kloset/kcontext"
+	"github.com/PlakarKorp/kloset/objects"
+
+	grpc_storage "github.com/PlakarKorp/plakar/connectors/grpc/storage/pkg"
+	plakar_storage "github.com/PlakarKorp/kloset/storage"
+
+	"google.golang.org/grpc"
+)
 
 type StoragePluginServer struct {
 	storage plakar_storage.Store
@@ -43,7 +22,7 @@ type StoragePluginServer struct {
 }
 
 func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
-	err := plugin.storage.Create(appcontext.NewAppContext(), req.Config)
+	err := plugin.storage.Create(kcontext.NewKContext(), req.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +30,7 @@ func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage
 }
 
 func (plugin *StoragePluginServer) Open(ctx context.Context, req *grpc_storage.OpenRequest) (*grpc_storage.OpenResponse, error) {
-	b, err := plugin.storage.Open(appcontext.NewAppContext())
+	b, err := plugin.storage.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +57,7 @@ func (plugin *StoragePluginServer) GetLocation(ctx context.Context, req *grpc_st
 func (plugin *StoragePluginServer) GetMode(ctx context.Context, req *grpc_storage.GetModeRequest) (*grpc_storage.GetModeResponse, error) {
 	mode := plugin.storage.Mode()
 	return &grpc_storage.GetModeResponse{
-		Mode: grpc_storage.Mode(mode),
+		Mode: int32(mode),
 	}, nil
 }
 
@@ -111,18 +90,18 @@ func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_stor
 }
 
 func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
-	var size int64
 	var buffer bytes.Buffer
+	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			// End of stream
 			break
 		}
 		if err != nil {
 			return err
 		}
+		mac = objects.MAC(req.Mac.Value)
 
 		_, err = buffer.Write(req.Chunk)
 		if err != nil {
@@ -130,9 +109,7 @@ func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 		}
 	}
 
-	mac := objects.MAC(buffer.Bytes())
-	s, err := plugin.storage.PutState(mac, &buffer)
-	size += s
+	size, err := plugin.storage.PutState(mac, bytes.NewReader(buffer.Bytes()))
 	if err != nil {
 		return err
 	}
@@ -204,18 +181,18 @@ func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_s
 }
 
 func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
-	var size int64
 	var buffer bytes.Buffer
+	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			// End of stream
 			break
 		}
 		if err != nil {
 			return err
 		}
+		mac = objects.MAC(req.Mac.Value)
 
 		_, err = buffer.Write(req.Chunk)
 		if err != nil {
@@ -223,9 +200,7 @@ func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 		}
 	}
 
-	mac := objects.MAC(buffer.Bytes())
-	s, err := plugin.storage.PutPackfile(mac, &buffer)
-	size += s
+	size, err := plugin.storage.PutPackfile(mac, bytes.NewReader(buffer.Bytes()))
 	if err != nil {
 		return err
 	}
@@ -329,16 +304,17 @@ func (plugin *StoragePluginServer) GetLocks(ctx context.Context, req *grpc_stora
 func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServer) error {
 	var size int64
 	var buffer bytes.Buffer
+	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			// End of stream
 			break
 		}
 		if err != nil {
 			return err
 		}
+		mac = objects.MAC(req.Mac.Value)
 
 		_, err = buffer.Write(req.Chunk)
 		if err != nil {
@@ -346,8 +322,7 @@ func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 		}
 	}
 
-	mac := objects.MAC(buffer.Bytes())
-	s, err := plugin.storage.PutLock(mac, &buffer)
+	s, err := plugin.storage.PutLock(mac, bytes.NewReader(buffer.Bytes()))
 	size += s
 	if err != nil {
 		return err
@@ -400,17 +375,17 @@ func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_sto
 }
 
 func RunStorage(storage plakar_storage.Store) error {
-	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
+	conn, listener, err := InitConn()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize connection: %w", err)
 	}
+	defer conn.Close()
 
 	server := grpc.NewServer()
-	fmt.Printf("server listening on %s\n", listenAddr.Addr())
 
 	grpc_storage.RegisterStoreServer(server, &StoragePluginServer{storage: storage})
 
-	if err := server.Serve(listenAddr); err != nil {
+	if err := server.Serve(listener); err != nil {
 		return err
 	}
 	return nil

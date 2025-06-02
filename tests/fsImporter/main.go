@@ -1,27 +1,39 @@
+/*
+ * Copyright (c) 2023 Gilles Chehade <gilles@poolp.org>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 package main
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
+	"github.com/PlakarKorp/kloset/snapshot/importer"
 	"github.com/PlakarKorp/go-kloset-sdk/sdk"
-	"github.com/PlakarKorp/plakar/appcontext"
-	"github.com/PlakarKorp/plakar/objects"
-	"github.com/PlakarKorp/plakar/snapshot/importer"
-	"github.com/pkg/xattr"
 )
 
 type FSImporter struct {
-	ctx     *appcontext.AppContext
+	ctx     context.Context
+	opts    *importer.Options
 	rootDir string
 
 	uidToName map[uint64]string
@@ -29,9 +41,9 @@ type FSImporter struct {
 	mu        sync.RWMutex
 }
 
-func NewFSImporter(appCtx *appcontext.AppContext, name string, config map[string]string) (importer.Importer, error) {
+func NewFSImporter(appCtx context.Context, opts *importer.Options, name string, config map[string]string) (importer.Importer, error) {
 	location := config["location"]
-	rootDir := strings.TrimPrefix(location, "fs://")
+	rootDir := strings.TrimPrefix(location, "fis://")
 
 	if !path.IsAbs(rootDir) {
 		return nil, fmt.Errorf("not an absolute path %s", location)
@@ -41,6 +53,7 @@ func NewFSImporter(appCtx *appcontext.AppContext, name string, config map[string
 
 	return &FSImporter{
 		ctx:       appCtx,
+		opts:      opts,
 		rootDir:   rootDir,
 		uidToName: make(map[uint64]string),
 		gidToName: make(map[uint64]string),
@@ -48,11 +61,7 @@ func NewFSImporter(appCtx *appcontext.AppContext, name string, config map[string
 }
 
 func (p *FSImporter) Origin() string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "localhost"
-	}
-	return hostname
+	return p.opts.Hostname
 }
 
 func (p *FSImporter) Type() string {
@@ -75,14 +84,14 @@ func (f *FSImporter) walkDir_walker(results chan<- *importer.ScanResult, rootDir
 	var wg sync.WaitGroup
 	for range numWorkers {
 		wg.Add(1)
-		go f.walkDir_worker(jobs, results, &wg)
+		go f.WalkDirWorker(jobs, results, &wg)
 	}
 
 	// Add prefix directories first
-	walkDir_addPrefixDirectories(realp, jobs, results)
+	WalkDirAddPrefixDirectories(realp, jobs, results)
 	if realp != rootDir {
 		jobs <- rootDir
-		walkDir_addPrefixDirectories(rootDir, jobs, results)
+		WalkDirAddPrefixDirectories(rootDir, jobs, results)
 	}
 
 	err := filepath.WalkDir(realp, func(path string, d fs.DirEntry, err error) error {
@@ -104,73 +113,6 @@ func (f *FSImporter) walkDir_walker(results chan<- *importer.ScanResult, rootDir
 	close(jobs)
 	wg.Wait()
 	close(results)
-}
-
-func (f *FSImporter) walkDir_worker(jobs <-chan string, results chan<- *importer.ScanResult, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for {
-		var (
-			path string
-			ok   bool
-		)
-
-		select {
-		case path, ok = <-jobs:
-			if !ok {
-				return
-			}
-		case <-f.ctx.Done():
-			return
-		}
-
-		info, err := os.Lstat(path)
-		if err != nil {
-			results <- importer.NewScanError(path, err)
-			continue
-		}
-
-		extendedAttributes, err := xattr.List(path)
-		if err != nil {
-			results <- importer.NewScanError(path, err)
-			continue
-		}
-
-		fileinfo := objects.FileInfoFromStat(info)
-		fileinfo.Lusername, fileinfo.Lgroupname = f.lookupIDs(fileinfo.Uid(), fileinfo.Gid())
-
-		var originFile string
-		if fileinfo.Mode()&os.ModeSymlink != 0 {
-			originFile, err = os.Readlink(path)
-			if err != nil {
-				results <- importer.NewScanError(path, err)
-				continue
-			}
-		}
-		results <- importer.NewScanRecord(filepath.ToSlash(path), originFile, fileinfo, extendedAttributes)
-		for _, attr := range extendedAttributes {
-			results <- importer.NewScanXattr(filepath.ToSlash(path), attr, objects.AttributeExtended)
-		}
-	}
-}
-
-func walkDir_addPrefixDirectories(rootDir string, jobs chan<- string, results chan<- *importer.ScanResult) {
-	atoms := strings.Split(rootDir, string(os.PathSeparator))
-
-	for i := range len(atoms) - 1 {
-		path := filepath.Join(atoms[0 : i+1]...)
-
-		if !strings.HasPrefix(path, "/") {
-			path = "/" + path
-		}
-
-		if _, err := os.Stat(path); err != nil {
-			results <- importer.NewScanError(path, err)
-			continue
-		}
-
-		jobs <- path
-	}
 }
 
 func (p *FSImporter) lookupIDs(uid, gid uint64) (uname, gname string) {
@@ -229,25 +171,6 @@ func (f *FSImporter) realpathFollow(path string) (resolved string, err error) {
 	return path, nil
 }
 
-func (p *FSImporter) NewReader(pathname string) (io.ReadCloser, error) {
-	if pathname[0] == '/' && runtime.GOOS == "windows" {
-		pathname = pathname[1:]
-	}
-	return os.Open(pathname)
-}
-
-func (p *FSImporter) NewExtendedAttributeReader(pathname string, attribute string) (io.ReadCloser, error) {
-	if pathname[0] == '/' && runtime.GOOS == "windows" {
-		pathname = pathname[1:]
-	}
-
-	data, err := xattr.Get(pathname, attribute)
-	if err != nil {
-		return nil, err
-	}
-	return io.NopCloser(bytes.NewReader(data)), nil
-}
-
 func (p *FSImporter) Close() error {
 	return nil
 }
@@ -273,7 +196,15 @@ func main() {
 		}
 	}
 
-	fsImporter, err := NewFSImporter(appcontext.NewAppContext(), "fs", scanMap)
+	opts := importer.Options{
+		Hostname:        "localhost",
+		OperatingSystem: "linux",
+		Architecture:    "amd64",
+		CWD:             "/",
+		MaxConcurrency:  4,
+	}
+
+	fsImporter, err := NewFSImporter(context.Background(), &opts, "fis", scanMap)
 	if err != nil {
 		panic(err)
 	}

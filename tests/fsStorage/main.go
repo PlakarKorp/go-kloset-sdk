@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/PlakarKorp/go-kloset-sdk/sdk"
-	"github.com/PlakarKorp/kloset/appcontext"
 	"github.com/PlakarKorp/kloset/objects"
 	"github.com/PlakarKorp/kloset/repository"
 	"github.com/PlakarKorp/kloset/storage"
@@ -37,7 +36,7 @@ func (s *Storage) Location() string {
 }
 
 func (s *Storage) Path(args ...string) string {
-	root := strings.TrimPrefix(s.Location(), "fs://")
+	root := strings.TrimPrefix(s.Location(), "fis://")
 
 	args = append(args, "")
 	copy(args[1:], args)
@@ -45,7 +44,7 @@ func (s *Storage) Path(args ...string) string {
 
 	return filepath.Join(args...)
 }
-func (s *Storage) Create(ctx *appcontext.AppContext, config []byte) error {
+func (s *Storage) Create(ctx context.Context, config []byte) error {
 	dirfp, err := os.Open(s.Path())
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -85,7 +84,7 @@ func (s *Storage) Create(ctx *appcontext.AppContext, config []byte) error {
 	return err
 }
 
-func (s *Storage) Open(ctx *appcontext.AppContext) ([]byte, error) {
+func (s *Storage) Open(ctx context.Context) ([]byte, error) {
 	s.packfiles = NewBuckets(s.Path("packfiles"))
 	s.states = NewBuckets(s.Path("states"))
 
@@ -110,7 +109,7 @@ func (s *Storage) Mode() storage.Mode {
 
 func (s *Storage) Size() int64 {
 	var size int64
-	location := strings.TrimPrefix(s.Location(), "fs://")
+	location := strings.TrimPrefix(s.Location(), "fis://")
 	_ = filepath.WalkDir(location, func(_ string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -255,7 +254,7 @@ func main() {
 		}
 	}
 
-	fsStorage, err := NewStore(context.Background(), "fs", scanMap)
+	fsStorage, err := NewStore(context.Background(), "fis", scanMap)
 	if err != nil {
 		panic(err)
 	}
