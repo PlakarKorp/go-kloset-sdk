@@ -114,15 +114,18 @@ func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_stor
 func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
 	var size int64
 	var buffer bytes.Buffer
+	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
-			// End of stream
-			break
-		}
 		if err != nil {
 			return err
+		}
+
+		mac = objects.MAC(req.Mac.Value)
+
+		if err == io.EOF {
+			break
 		}
 
 		_, err = buffer.Write(req.Chunk)
@@ -131,8 +134,7 @@ func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 		}
 	}
 
-	mac := objects.MAC(buffer.Bytes())
-	s, err := plugin.storage.PutState(mac, &buffer)
+	s, err := plugin.storage.PutState(mac, bytes.NewReader(buffer.Bytes()))
 	size += s
 	if err != nil {
 		return err
@@ -207,15 +209,19 @@ func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_s
 func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
 	var size int64
 	var buffer bytes.Buffer
+	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
-			// End of stream
-			break
-		}
 		if err != nil {
 			return err
+		}
+
+		mac = objects.MAC(req.Mac.Value)
+		fmt.Printf("Received chunk for MAC: %x\n", mac)
+
+		if err == io.EOF {
+			break
 		}
 
 		_, err = buffer.Write(req.Chunk)
@@ -224,8 +230,7 @@ func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 		}
 	}
 
-	mac := objects.MAC(buffer.Bytes())
-	s, err := plugin.storage.PutPackfile(mac, &buffer)
+	s, err := plugin.storage.PutPackfile(mac, bytes.NewReader(buffer.Bytes()))
 	size += s
 	if err != nil {
 		return err
@@ -330,15 +335,18 @@ func (plugin *StoragePluginServer) GetLocks(ctx context.Context, req *grpc_stora
 func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServer) error {
 	var size int64
 	var buffer bytes.Buffer
+	var mac objects.MAC
 
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
-			// End of stream
-			break
-		}
 		if err != nil {
 			return err
+		}
+
+		mac = objects.MAC(req.Mac.Value)
+
+		if err == io.EOF {
+			break
 		}
 
 		_, err = buffer.Write(req.Chunk)
@@ -347,8 +355,7 @@ func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 		}
 	}
 
-	mac := objects.MAC(buffer.Bytes())
-	s, err := plugin.storage.PutLock(mac, &buffer)
+	s, err := plugin.storage.PutLock(mac, bytes.NewReader(buffer.Bytes()))
 	size += s
 	if err != nil {
 		return err
