@@ -5,13 +5,12 @@ import (
 	"context"
 	"fmt"
 	grpc_storage "github.com/PlakarKorp/go-kloset-sdk/pkg/store"
-	kloset_appcontext "github.com/PlakarKorp/kloset/appcontext"
-	"github.com/PlakarKorp/kloset/objects"
-	plakar_storage "github.com/PlakarKorp/kloset/storage"
+	"github.com/PlakarKorp/plakar/appcontext"
+	"github.com/PlakarKorp/plakar/objects"
+	plakar_storage "github.com/PlakarKorp/plakar/storage"
 	"google.golang.org/grpc"
 	"io"
 	"net"
-	"os"
 )
 
 //type StoreServer interface {
@@ -44,7 +43,7 @@ type StoragePluginServer struct {
 }
 
 func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
-	err := plugin.storage.Create(kloset_appcontext.NewAppContext(), req.Config)
+	err := plugin.storage.Create(appcontext.NewAppContext(), req.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +51,7 @@ func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage
 }
 
 func (plugin *StoragePluginServer) Open(ctx context.Context, req *grpc_storage.OpenRequest) (*grpc_storage.OpenResponse, error) {
-	b, err := plugin.storage.Open(kloset_appcontext.NewAppContext())
+	b, err := plugin.storage.Open(appcontext.NewAppContext())
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +112,8 @@ func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_stor
 
 func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
 	var size int64
+	var buffer bytes.Buffer
+
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -123,16 +124,20 @@ func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 			return err
 		}
 
-		mac := objects.MAC(req.Mac.Value)
-		rd := bytes.NewReader(req.Chunk)
-		s, err := plugin.storage.PutState(mac, rd)
-		size += s
+		_, err = buffer.Write(req.Chunk)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := stream.SendAndClose(&grpc_storage.PutStateResponse{
+	mac := objects.MAC(buffer.Bytes())
+	s, err := plugin.storage.PutState(mac, &buffer)
+	size += s
+	if err != nil {
+		return err
+	}
+
+	err = stream.SendAndClose(&grpc_storage.PutStateResponse{
 		BytesWritten: size,
 	})
 	if err != nil {
@@ -200,6 +205,8 @@ func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_s
 
 func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
 	var size int64
+	var buffer bytes.Buffer
+
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -210,16 +217,20 @@ func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 			return err
 		}
 
-		mac := objects.MAC(req.Mac.Value)
-		rd := bytes.NewReader(req.Chunk)
-		s, err := plugin.storage.PutPackfile(mac, rd)
-		size += s
+		_, err = buffer.Write(req.Chunk)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := stream.SendAndClose(&grpc_storage.PutPackfileResponse{
+	mac := objects.MAC(buffer.Bytes())
+	s, err := plugin.storage.PutPackfile(mac, &buffer)
+	size += s
+	if err != nil {
+		return err
+	}
+
+	err = stream.SendAndClose(&grpc_storage.PutPackfileResponse{
 		BytesWritten: size,
 	})
 	if err != nil {
@@ -317,6 +328,8 @@ func (plugin *StoragePluginServer) GetLocks(ctx context.Context, req *grpc_stora
 
 func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServer) error {
 	var size int64
+	var buffer bytes.Buffer
+
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -327,16 +340,20 @@ func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 			return err
 		}
 
-		mac := objects.MAC(req.Mac.Value)
-		rd := bytes.NewReader(req.Chunk)
-		s, err := plugin.storage.PutLock(mac, rd)
-		size += s
+		_, err = buffer.Write(req.Chunk)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := stream.SendAndClose(&grpc_storage.PutLockResponse{
+	mac := objects.MAC(buffer.Bytes())
+	s, err := plugin.storage.PutLock(mac, &buffer)
+	size += s
+	if err != nil {
+		return err
+	}
+
+	err = stream.SendAndClose(&grpc_storage.PutLockResponse{
 		BytesWritten: size,
 	})
 	if err != nil {
@@ -383,24 +400,17 @@ func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_sto
 }
 
 func RunStorage(storage plakar_storage.Store) error {
-	file := os.NewFile(3, "grpc-conn")
-	if file == nil {
-		return fmt.Errorf("failed to get file descriptor for fd 3")
-	}
-	defer file.Close()
-
-	conn, err := net.FileConn(file)
+	listenAddr, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 50052))
 	if err != nil {
-		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
+		return err
 	}
-
-	listener := &singleConnListener{conn: conn}
 
 	server := grpc.NewServer()
+	fmt.Printf("server listening on %s\n", listenAddr.Addr())
 
 	grpc_storage.RegisterStoreServer(server, &StoragePluginServer{storage: storage})
 
-	if err := server.Serve(listener); err != nil {
+	if err := server.Serve(listenAddr); err != nil {
 		return err
 	}
 	return nil
