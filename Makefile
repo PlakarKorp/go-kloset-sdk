@@ -19,17 +19,19 @@ gen:
 	done
 	rm -f ./importer.proto ./exporter.proto ./store.proto
 
+all: impor expor storage iphoto
+
 impor:
 	go build ./tests/fsImporter/main.go
-	rm -rf $(HOME).config/plakar/plugins/fs-v1.0.0.ptar
+	rm -rf $(HOME).config/plakar/plugins/importer/fs-v1.0.0.ptar
 	mv main fs-v1.0.0.ptar
-	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/
+	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/importer/
 
 expor:
-	go build ./tests/fsExporter/fis-v1.0.0.go
+	go build ./tests/fsExporter/main.go
 	rm -rf $(HOME).config/plakar/plugins/exporter/fs-v1.0.0.ptar
-	mv fis-v1.0.0 fis-v1.0.0.ptar
-	mv fis-v1.0.0.ptar $(HOME).config/plakar/plugins/exporter/
+	mv main fs-v1.0.0.ptar
+	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/exporter/
 
 storage:
 	go build ./tests/fsStorage/

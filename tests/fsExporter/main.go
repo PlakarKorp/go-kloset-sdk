@@ -12,14 +12,13 @@ import (
 	"github.com/PlakarKorp/plakar/snapshot/exporter"
 )
 
-
 type FSExporter struct {
 	rootDir string
 }
 
 func NewFSExporter(appCtx *appcontext.AppContext, name string, config map[string]string) (exporter.Exporter, error) {
 	return &FSExporter{
-		rootDir: strings.TrimPrefix(config["location"], "fis://"),
+		rootDir: strings.TrimPrefix(config["location"], "fs://"),
 	}, nil
 }
 
@@ -77,7 +76,7 @@ func main() {
 		}
 	}
 
-	fsExporter, err := NewFSExporter(appcontext.NewAppContext(), "fis", scanMap)
+	fsExporter, err := NewFSExporter(appcontext.NewAppContext(), "fs", scanMap)
 	if err != nil {
 		panic(err)
 	}
