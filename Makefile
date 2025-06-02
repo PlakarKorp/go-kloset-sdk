@@ -1,6 +1,6 @@
 PROTO_SRC_DIR := $(shell pwd)/proto
 PROTOS := importer exporter store
-HOME := $(shell echo $$HOME)
+HOME := $(shell echo $$HOME)/
 
 gen:
 	for proto in $(PROTOS); do \
