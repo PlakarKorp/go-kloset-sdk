@@ -1,5 +1,6 @@
 PROTO_SRC_DIR := $(shell pwd)/proto
-PROTOS := importer exporter #store
+PROTOS := importer exporter store
+HOME := $(shell echo $$HOME)
 
 gen:
 	for proto in $(PROTOS); do \
@@ -17,3 +18,27 @@ gen:
 				/app/$$proto.proto; \
 	done
 	rm -f ./importer.proto ./exporter.proto ./store.proto
+
+impor:
+	go build ./tests/fsImporter/main.go
+	rm -rf $(HOME).config/plakar/plugins/fs-v1.0.0.ptar
+	mv main fs-v1.0.0.ptar
+	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/
+
+expor:
+	go build ./tests/fsExporter/fis-v1.0.0.go
+	rm -rf $(HOME).config/plakar/plugins/exporter/fs-v1.0.0.ptar
+	mv fis-v1.0.0 fis-v1.0.0.ptar
+	mv fis-v1.0.0.ptar $(HOME).config/plakar/plugins/exporter/
+
+storage:
+	go build ./tests/fsStorage/
+	rm -rf $(HOME).config/plakar/plugins/storage/fs-v1.0.0.ptar
+	mv fsStorage fs-v1.0.0.ptar
+	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/storage/
+
+iphoto:
+	go build ./tests/iphoto/iphoto.go
+	rm -rf $(HOME).config/plakar/plugins/importer/iphoto-v1.0.0.ptar
+	mv iphoto iphoto-v1.0.0.ptar
+	mv iphoto-v1.0.0.ptar $(HOME).config/plakar/plugins/importer/
