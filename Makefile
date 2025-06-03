@@ -23,24 +23,26 @@ all: impor expor storage iphoto
 
 impor:
 	go build ./tests/fsImporter/main.go
-	rm -rf $(HOME).config/plakar/plugins/importer/fs-v1.0.0.ptar
-	mv main fs-v1.0.0.ptar
-	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/importer/
+	rm -rf $(HOME).config/plakar/plugins/importer/fis-v1.0.0.ptar
+	mv main fis-v1.0.0.ptar
+	mv fis-v1.0.0.ptar $(HOME).config/plakar/plugins/importer/
 
 expor:
 	go build ./tests/fsExporter/main.go
-	rm -rf $(HOME).config/plakar/plugins/exporter/fs-v1.0.0.ptar
-	mv main fs-v1.0.0.ptar
-	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/exporter/
+	rm -rf $(HOME).config/plakar/plugins/exporter/fis-v1.0.0.ptar
+	mv main fis-v1.0.0.ptar
+	mv fis-v1.0.0.ptar $(HOME).config/plakar/plugins/exporter/
 
 storage:
 	go build ./tests/fsStorage/
-	rm -rf $(HOME).config/plakar/plugins/storage/fs-v1.0.0.ptar
-	mv fsStorage fs-v1.0.0.ptar
-	mv fs-v1.0.0.ptar $(HOME).config/plakar/plugins/storage/
+	rm -rf $(HOME).config/plakar/plugins/storage/fis-v1.0.0.ptar
+	mv fsStorage fis-v1.0.0.ptar
+	mv fis-v1.0.0.ptar $(HOME).config/plakar/plugins/storage/
 
 iphoto:
 	go build ./tests/iphoto/iphoto.go
 	rm -rf $(HOME).config/plakar/plugins/importer/iphoto-v1.0.0.ptar
 	mv iphoto iphoto-v1.0.0.ptar
 	mv iphoto-v1.0.0.ptar $(HOME).config/plakar/plugins/importer/
+
+all: impor expor storage iphoto

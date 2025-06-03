@@ -9,9 +9,11 @@ import (
 	"net"
 	"os"
 
-	grpc_exporter "github.com/PlakarKorp/go-kloset-sdk/pkg/exporter"
-	"github.com/PlakarKorp/plakar/objects"
-	plakar_exporter "github.com/PlakarKorp/plakar/snapshot/exporter"
+	"github.com/PlakarKorp/kloset/objects"
+
+	grpc_exporter "github.com/PlakarKorp/kloset/snapshot/exporter/pkg"
+	plakar_exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
+
 	"google.golang.org/grpc"
 )
 

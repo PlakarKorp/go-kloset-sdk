@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	grpc_storage "github.com/PlakarKorp/go-kloset-sdk/pkg/store"
-	"github.com/PlakarKorp/kloset/appcontext"
-	"github.com/PlakarKorp/kloset/objects"
-	plakar_storage "github.com/PlakarKorp/kloset/storage"
-	"google.golang.org/grpc"
 	"io"
 	"net"
 	"os"
+
+	"github.com/PlakarKorp/kloset/kcontext"
+	"github.com/PlakarKorp/kloset/objects"
+
+	grpc_storage "github.com/PlakarKorp/kloset/storage/pkg"
+	plakar_storage "github.com/PlakarKorp/kloset/storage"
+
+	"google.golang.org/grpc"
 )
 
 //type StoreServer interface {
@@ -44,7 +47,7 @@ type StoragePluginServer struct {
 }
 
 func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
-	err := plugin.storage.Create(appcontext.NewAppContext(), req.Config)
+	err := plugin.storage.Create(kcontext.NewKContext(), req.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +55,7 @@ func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage
 }
 
 func (plugin *StoragePluginServer) Open(ctx context.Context, req *grpc_storage.OpenRequest) (*grpc_storage.OpenResponse, error) {
-	b, err := plugin.storage.Open(appcontext.NewAppContext())
+	b, err := plugin.storage.Open(ctx)
 	if err != nil {
 		return nil, err
 	}

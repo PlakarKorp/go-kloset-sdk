@@ -7,8 +7,8 @@ import (
 	"net"
 	"os"
 
-	grpc_importer "github.com/PlakarKorp/go-kloset-sdk/pkg/importer"
-	plakar_importer "github.com/PlakarKorp/plakar/snapshot/importer"
+	grpc_importer "github.com/PlakarKorp/kloset/snapshot/importer/pkg"
+	kloset_importer "github.com/PlakarKorp/kloset/snapshot/importer"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -36,7 +36,7 @@ func (l *singleConnListener) Addr() net.Addr {
 }
 
 type ImporterPluginServer struct {
-	importer plakar_importer.Importer
+	importer kloset_importer.Importer
 
 	grpc_importer.UnimplementedImporterServer
 }
@@ -68,14 +68,23 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 					Name: result.Record.XattrName,
 					Type: grpc_importer.ExtendedAttributeType(result.Record.XattrType),
 				}
-			} else {
-				xattr = nil
+			}
+
+			var readerBytes []byte
+
+			if result.Record.Reader != nil && result.Record.FileInfo.Lmode& os.ModeDir == 0 {
+				readerBytes, err = io.ReadAll(result.Record.Reader)
+				result.Record.Reader.Close()
+				if err != nil {
+					return err
+				}
 			}
 
 			if err := stream.Send(&grpc_importer.ScanResponse{
 				Pathname: result.Record.Pathname,
 				Result: &grpc_importer.ScanResponse_Record{
 					Record: &grpc_importer.ScanRecord{
+						Reader: readerBytes,
 						Target: result.Record.Target,
 						Fileinfo: &grpc_importer.ScanRecordFileInfo{
 							Name:      result.Record.FileInfo.Lname,
@@ -116,34 +125,7 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 	return nil
 }
 
-func (plugin *ImporterPluginServer) Read(req *grpc_importer.ReadRequest, stream grpc_importer.Importer_ReadServer) error {
-	content, err := plugin.importer.NewReader(req.Pathname)
-	if err != nil {
-		return err
-	}
-	defer content.Close()
-
-	buffer := make([]byte, 8192)
-	for {
-		n, err := content.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
-		if n > 0 {
-			if err := stream.Send(&grpc_importer.ReadResponse{
-				Data: buffer[:n],
-			}); err != nil {
-				return err
-			}
-		}
-	}
-}
-
-func RunImporter(imp plakar_importer.Importer) error {
+func RunImporter(imp kloset_importer.Importer) error {
 	file := os.NewFile(3, "grpc-conn")
 	if file == nil {
 		return fmt.Errorf("failed to get file descriptor for fd 3")
