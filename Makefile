@@ -22,9 +22,9 @@ gen:
 all: impor expor storage iphoto
 
 impor:
-	go build ./tests/fsImporter/main.go
+	go build ./tests/fsImporter/
 	rm -rf $(HOME).config/plakar/plugins/importer/fis-v1.0.0.ptar
-	mv main fis-v1.0.0.ptar
+	mv fsImporter fis-v1.0.0.ptar
 	mv fis-v1.0.0.ptar $(HOME).config/plakar/plugins/importer/
 
 expor:

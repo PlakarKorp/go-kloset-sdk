@@ -16,7 +16,7 @@ type FSExporter struct {
 	rootDir string
 }
 
-func NewFSExporter(appCtx *kcontext.KContext, name string, config map[string]string) (exporter.Exporter, error) {
+func NewFSExporter(appCtx *kcontext.KContext, opts *exporter.ExporterOptions, name string, config map[string]string) (exporter.Exporter, error) {
 	return &FSExporter{
 		rootDir: strings.TrimPrefix(config["location"], "fis://"),
 	}, nil
@@ -76,7 +76,7 @@ func main() {
 		}
 	}
 
-	fsExporter, err := NewFSExporter(kcontext.NewKContext(), "fs", scanMap)
+	fsExporter, err := NewFSExporter(kcontext.NewKContext(), nil, "fs", scanMap)
 	if err != nil {
 		panic(err)
 	}

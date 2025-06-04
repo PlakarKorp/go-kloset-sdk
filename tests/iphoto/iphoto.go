@@ -43,7 +43,7 @@ type iCloudPhotoImporter struct {
 	ino uint64
 }
 
-func NewiCloudPhotoImporter(ctx context.Context, name string, config map[string]string) (importer.Importer, error) {
+func NewiCloudPhotoImporter(ctx context.Context, opts *importer.ImporterOptions, name string, config map[string]string) (importer.Importer, error) {
 	directory := filepath.Join(os.TempDir(), "plakar-icloudpd")
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create directory %s: %w", directory, err)
@@ -275,7 +275,7 @@ func main() {
 			scanMap[kv[0]] = kv[1]
 		}
 	}
-	icloudImporter, err := NewiCloudPhotoImporter(kcontext.NewKContext(), "iphoto", scanMap)
+	icloudImporter, err := NewiCloudPhotoImporter(kcontext.NewKContext(), nil, "iphoto", scanMap)
 	if err != nil {
 		panic(err)
 	}

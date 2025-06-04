@@ -25,7 +25,7 @@ type Storage struct {
 	states    Buckets
 }
 
-func NewStore(ctx context.Context, proto string, storeConfig map[string]string) (storage.Store, error) {
+func NewStore(ctx context.Context, opts *storage.StoreOptions, proto string, storeConfig map[string]string) (storage.Store, error) {
 	return &Storage{
 		location: storeConfig["location"],
 	}, nil
@@ -254,7 +254,7 @@ func main() {
 		}
 	}
 
-	fsStorage, err := NewStore(context.Background(), "fis", scanMap)
+	fsStorage, err := NewStore(context.Background(), nil, "fis", scanMap)
 	if err != nil {
 		panic(err)
 	}
