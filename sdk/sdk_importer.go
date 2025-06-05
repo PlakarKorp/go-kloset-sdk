@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"time"
 
 	grpc_importer "github.com/PlakarKorp/kloset/snapshot/importer/pkg"
 	kloset_importer "github.com/PlakarKorp/kloset/snapshot/importer"
@@ -70,21 +71,10 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 				}
 			}
 
-			var readerBytes []byte
-
-			if result.Record.Reader != nil && result.Record.FileInfo.Lmode& os.ModeDir == 0 {
-				readerBytes, err = io.ReadAll(result.Record.Reader)
-				result.Record.Reader.Close()
-				if err != nil {
-					return err
-				}
-			}
-
 			if err := stream.Send(&grpc_importer.ScanResponse{
 				Pathname: result.Record.Pathname,
 				Result: &grpc_importer.ScanResponse_Record{
 					Record: &grpc_importer.ScanRecord{
-						Reader: readerBytes,
 						Target: result.Record.Target,
 						Fileinfo: &grpc_importer.ScanRecordFileInfo{
 							Name:      result.Record.FileInfo.Lname,
@@ -106,6 +96,45 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 				},
 			}); err != nil {
 				return err
+			}
+
+			buf := make([]byte, 8192)
+			for {
+				time.Sleep(1 * time.Second)
+				n, err := result.Record.Reader.Read(buf)
+				if n > 0 {
+					fmt.Printf("\n[SDK] Sending chunk for pathname: %s, size: %d\n", result.Record.Pathname, n)
+					if err := stream.Send(&grpc_importer.ScanResponse{
+						Pathname: result.Record.Pathname,
+						Result: &grpc_importer.ScanResponse_Chunk{
+							Chunk: &grpc_importer.ScanChunk{
+								ChunkType: &grpc_importer.ScanChunk_Data{
+									Data: buf[:n],
+								},
+							},
+						},
+					}); err != nil {
+						return err
+					}
+				}
+				if err == io.EOF {
+					if err := stream.Send(&grpc_importer.ScanResponse{
+						Pathname: result.Record.Pathname,
+						Result: &grpc_importer.ScanResponse_Chunk{
+							Chunk: &grpc_importer.ScanChunk{
+								ChunkType: &grpc_importer.ScanChunk_Eof{
+									Eof: &grpc_importer.EOFResponse{},
+								},
+							},
+						},
+					}); err != nil {
+						return err
+					}
+					break
+				}
+				if err != nil {
+					return err
+				}
 			}
 		case result.Error != nil:
 			if err := stream.Send(&grpc_importer.ScanResponse{

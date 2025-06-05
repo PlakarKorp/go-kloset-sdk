@@ -26,6 +26,7 @@ message ScanResponse {
   oneof result {
     ScanError error = 3;
     ScanRecord record = 2;
+    ScanChunk chunk = 4;
   }
 }
 
@@ -34,11 +35,20 @@ message ScanError {
 }
 
 message ScanRecord {
-  bytes reader = 1;
-  string target = 2;
-  ScanRecordFileInfo fileinfo = 3;
-  uint32 file_attributes = 4;
-  optional ExtendedAttribute xattr = 5;
+  string target = 1;
+  ScanRecordFileInfo fileinfo = 2;
+  uint32 file_attributes = 3;
+  optional ExtendedAttribute xattr = 4;
+}
+
+message ScanChunk {
+  oneof chunkType {
+    bytes data = 1;
+    EOFResponse eof = 2;
+  }
+}
+
+message EOFResponse {
 }
 
 enum ExtendedAttributeType {
