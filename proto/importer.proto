@@ -6,7 +6,11 @@ import "google/protobuf/timestamp.proto";
 
 service Importer {
   rpc Info(InfoRequest) returns (InfoResponse);
-  rpc Scan(ScanRequest) returns (stream ScanResponse);
+  rpc Scan(ScanRequest) returns (ScanResponse);
+  rpc ScanDone(ScanDoneRequest) returns (ScanDoneResponse);
+  rpc GetRecord(GetRecordRequest) returns (GetRecordResponse);
+  rpc Open(OpenRequest) returns (stream OpenResponse);
+  rpc Close(CloseRequest) returns (CloseResponse);
 }
 
 message InfoRequest {
@@ -22,11 +26,23 @@ message ScanRequest {
 }
 
 message ScanResponse {
+}
+
+message ScanDoneRequest {
+}
+
+message ScanDoneResponse {
+  bool done = 1;
+}
+
+message GetRecordRequest {
+}
+
+message GetRecordResponse {
   string pathname = 1;
   oneof result {
     ScanError error = 3;
     ScanRecord record = 2;
-    ScanChunk chunk = 4;
   }
 }
 
@@ -39,13 +55,6 @@ message ScanRecord {
   ScanRecordFileInfo fileinfo = 2;
   uint32 file_attributes = 3;
   optional ExtendedAttribute xattr = 4;
-}
-
-message ScanChunk {
-  oneof chunkType {
-    bytes data = 1;
-    EOFResponse eof = 2;
-  }
 }
 
 message EOFResponse {
@@ -80,4 +89,20 @@ message ScanRecordFileInfo {
 message ScanResponseError {
   string name = 1;
   int64 size = 3;
+}
+
+
+message OpenRequest {
+  string pathname = 1;
+}
+
+message OpenResponse {
+  bytes chunk = 1;
+}
+
+message CloseRequest {
+  string pathname = 1;
+}
+
+message CloseResponse {
 }
