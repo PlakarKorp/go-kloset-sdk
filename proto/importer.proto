@@ -6,9 +6,7 @@ import "google/protobuf/timestamp.proto";
 
 service Importer {
   rpc Info(InfoRequest) returns (InfoResponse);
-  rpc Scan(ScanRequest) returns (ScanResponse);
-  rpc ScanDone(ScanDoneRequest) returns (ScanDoneResponse);
-  rpc GetRecord(GetRecordRequest) returns (GetRecordResponse);
+  rpc Scan(ScanRequest) returns (stream ScanResponse);
   rpc Open(OpenRequest) returns (stream OpenResponse);
   rpc Close(CloseRequest) returns (CloseResponse);
 }
@@ -26,19 +24,6 @@ message ScanRequest {
 }
 
 message ScanResponse {
-}
-
-message ScanDoneRequest {
-}
-
-message ScanDoneResponse {
-  bool done = 1;
-}
-
-message GetRecordRequest {
-}
-
-message GetRecordResponse {
   string pathname = 1;
   oneof result {
     ScanError error = 3;
