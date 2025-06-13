@@ -3,10 +3,10 @@ module github.com/PlakarKorp/go-kloset-sdk
 go 1.23.3
 
 require (
-	github.com/PlakarKorp/kloset v1.0.1-beta.1
-	github.com/PlakarKorp/plakar v1.0.1
+	github.com/PlakarKorp/kloset v1.0.1-beta.1.0.20250612075141-af0e76407801
+	github.com/PlakarKorp/plakar v1.0.2
 	github.com/pkg/xattr v0.4.10
-	google.golang.org/grpc v1.72.2
+	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )
 
@@ -65,8 +65,6 @@ require (
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/PlakarKorp/kloset => ../kloset

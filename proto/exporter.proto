@@ -25,12 +25,18 @@ message CreateDirectoryRequest {
 message CreateDirectoryResponse {}
 
 message StoreFileRequest {
-  string pathname = 1;
-  io_reader fp = 2;
-  uint64 size = 3;
+  oneof type {
+    Header header = 1;
+    Data data = 2;
+  }
 }
 
-message io_reader {
+message Header {
+  string pathname = 1;
+  uint64 size = 2;
+}
+
+message Data {
   bytes chunk = 1;
 }
 

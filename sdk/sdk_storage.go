@@ -5,40 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
-	"os"
 
 	"github.com/PlakarKorp/kloset/kcontext"
 	"github.com/PlakarKorp/kloset/objects"
 
-	grpc_storage "github.com/PlakarKorp/kloset/storage/pkg"
+	grpc_storage "github.com/PlakarKorp/plakar/connectors/grpc/storage/pkg"
 	plakar_storage "github.com/PlakarKorp/kloset/storage"
 
 	"google.golang.org/grpc"
 )
-
-//type StoreServer interface {
-//	Create(context.Context, *CreateRequest) (*CreateResponse, error)
-//	Open(context.Context, *OpenRequest) (*OpenResponse, error)
-//	Close(context.Context, *CloseRequest) (*CloseResponse, error)
-//	GetLocation(context.Context, *GetLocationRequest) (*GetLocationResponse, error)
-//	GetMode(context.Context, *GetModeRequest) (*GetModeResponse, error)
-//	GetSize(context.Context, *GetSizeRequest) (*GetSizeResponse, error)
-//	GetStates(context.Context, *GetStatesRequest) (*GetStatesResponse, error)
-//	PutState(Store_PutStateServer) error
-//	GetState(*GetStateRequest, Store_GetStateServer) error
-//	DeleteState(context.Context, *DeleteStateRequest) (*DeleteStateResponse, error)
-//	GetPackfiles(context.Context, *GetPackfilesRequest) (*GetPackfilesResponse, error)
-//	PutPackfile(Store_PutPackfileServer) error
-//	GetPackfile(*GetPackfileRequest, Store_GetPackfileServer) error
-//	GetPackfileBlob(*GetPackfileBlobRequest, Store_GetPackfileBlobServer) error
-//	DeletePackfile(context.Context, *DeletePackfileRequest) (*DeletePackfileResponse, error)
-//	GetLocks(context.Context, *GetLocksRequest) (*GetLocksResponse, error)
-//	PutLock(Store_PutLockServer) error
-//	GetLock(*GetLockRequest, Store_GetLockServer) error
-//	DeleteLock(context.Context, *DeleteLockRequest) (*DeleteLockResponse, error)
-//	mustEmbedUnimplementedStoreServer()
-//}
 
 type StoragePluginServer struct {
 	storage plakar_storage.Store
@@ -400,18 +375,11 @@ func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_sto
 }
 
 func RunStorage(storage plakar_storage.Store) error {
-	file := os.NewFile(3, "grpc-conn")
-	if file == nil {
-		return fmt.Errorf("failed to get file descriptor for fd 3")
-	}
-	defer file.Close()
-
-	conn, err := net.FileConn(file)
+	conn, listener, err := InitConn()
 	if err != nil {
-		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
+		return fmt.Errorf("failed to initialize connection: %w", err)
 	}
-
-	listener := &singleConnListener{conn: conn}
+	defer conn.Close()
 
 	server := grpc.NewServer()
 

@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net"
-	"os"
 
 	"github.com/PlakarKorp/kloset/objects"
 
-	grpc_exporter "github.com/PlakarKorp/kloset/snapshot/exporter/pkg"
+	grpc_exporter "github.com/PlakarKorp/plakar/connectors/grpc/exporter/pkg"
 	plakar_exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
 
 	"google.golang.org/grpc"
@@ -38,9 +36,26 @@ func (plugin *exporterPluginServer) CreateDirectory(ctx context.Context, req *gr
 }
 
 func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_StoreFileServer) error {
-	var pathname string
-	var size int64
 	var buf bytes.Buffer
+
+	req, err := stream.Recv()
+	if err == io.EOF {
+		return fmt.Errorf("no requests received")
+	}
+	if err != nil {
+		return err
+	}
+	
+	if req.GetHeader() == nil {
+		return fmt.Errorf("first request must be of type Header, got %v", req.Type)
+	}
+
+	pathname := req.GetHeader().Pathname
+	size := int64(req.GetHeader().Size)
+
+	if pathname == "" || size <= 0 {
+		return fmt.Errorf("invalid pathname or size: pathname=%s, size=%d", pathname, size)
+	}
 
 	for {
 		req, err := stream.Recv()
@@ -51,20 +66,11 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 			return err
 		}
 
-		if pathname == "" {
-			pathname = req.Pathname
-			size = int64(req.Size)
-		}
-
-		if req.Fp != nil && len(req.Fp.Chunk) > 0 {
-			if _, err := buf.Write(req.Fp.Chunk); err != nil {
+		if req.GetData() != nil && len(req.GetData().Chunk) > 0 {
+			if _, err := buf.Write(req.GetData().Chunk); err != nil {
 				return err
 			}
 		}
-	}
-
-	if pathname == "" {
-		return fmt.Errorf("no pathname provided")
 	}
 
 	if err := plugin.exporter.StoreFile(pathname, &buf, size); err != nil {
@@ -104,18 +110,11 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporte
 }
 
 func RunExporter(exp plakar_exporter.Exporter) error {
-	file := os.NewFile(3, "grpc-conn")
-	if file == nil {
-		return fmt.Errorf("failed to get file descriptor for fd 3")
-	}
-	defer file.Close()
-
-	conn, err := net.FileConn(file)
+	conn, listener, err := InitConn()
 	if err != nil {
-		return fmt.Errorf("failed to convert fd to net.Conn: %w", err)
+		return fmt.Errorf("failed to initialize connection: %w", err)
 	}
-
-	listener := &singleConnListener{conn: conn}
+	defer conn.Close()
 
 	server := grpc.NewServer()
 

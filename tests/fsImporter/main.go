@@ -33,7 +33,7 @@ import (
 
 type FSImporter struct {
 	ctx     context.Context
-	opts    *importer.ImporterOptions
+	opts    *importer.Options
 	rootDir string
 
 	uidToName map[uint64]string
@@ -41,7 +41,7 @@ type FSImporter struct {
 	mu        sync.RWMutex
 }
 
-func NewFSImporter(appCtx context.Context, opts *importer.ImporterOptions, name string, config map[string]string) (importer.Importer, error) {
+func NewFSImporter(appCtx context.Context, opts *importer.Options, name string, config map[string]string) (importer.Importer, error) {
 	location := config["location"]
 	rootDir := strings.TrimPrefix(location, "fis://")
 
@@ -196,7 +196,7 @@ func main() {
 		}
 	}
 
-	opts := importer.ImporterOptions{
+	opts := importer.Options{
 		Hostname:        "localhost",
 		OperatingSystem: "linux",
 		Architecture:    "amd64",
