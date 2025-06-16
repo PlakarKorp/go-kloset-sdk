@@ -7,7 +7,8 @@ import "google/protobuf/timestamp.proto";
 service Importer {
   rpc Info(InfoRequest) returns (InfoResponse);
   rpc Scan(ScanRequest) returns (stream ScanResponse);
-  rpc Open(OpenRequest) returns (stream OpenResponse);
+  rpc OpenReader(OpenReaderRequest) returns (stream OpenReaderResponse);
+  rpc CloseReader(CloseReaderRequest) returns (CloseReaderResponse);
   rpc Close(CloseRequest) returns (CloseResponse);
 }
 
@@ -77,16 +78,22 @@ message ScanResponseError {
 }
 
 
-message OpenRequest {
+message OpenReaderRequest {
   string pathname = 1;
 }
 
-message OpenResponse {
+message OpenReaderResponse {
   bytes chunk = 1;
 }
 
-message CloseRequest {
+message CloseReaderRequest {
   string pathname = 1;
+}
+
+message CloseReaderResponse {
+}
+
+message CloseRequest {
 }
 
 message CloseResponse {

@@ -54,7 +54,6 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 				}
 			}
 
-
 			ret := &grpc_importer.ScanResponse{
 				Pathname: result.Record.Pathname,
 				Result: &grpc_importer.ScanResponse_Record{
@@ -109,9 +108,8 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 	return nil
 }
 
-func (plugin *ImporterPluginServer) Open(req *grpc_importer.OpenRequest, stream grpc_importer.Importer_OpenServer) error {
+func (plugin *ImporterPluginServer) OpenReader(req *grpc_importer.OpenReaderRequest, stream grpc_importer.Importer_OpenReaderServer) error {
 	pathname := req.Pathname
-
 
 	plugin.mu.Lock()
 	defer plugin.mu.Unlock()
@@ -124,7 +122,7 @@ func (plugin *ImporterPluginServer) Open(req *grpc_importer.OpenRequest, stream 
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
-			if err := stream.Send(&grpc_importer.OpenResponse{Chunk: buf[:n]}); err != nil {
+			if err := stream.Send(&grpc_importer.OpenReaderResponse{Chunk: buf[:n]}); err != nil {
 				return err
 			}
 		}
@@ -138,9 +136,8 @@ func (plugin *ImporterPluginServer) Open(req *grpc_importer.OpenRequest, stream 
 	return nil
 }
 
-func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importer.CloseRequest) (*grpc_importer.CloseResponse, error) {
+func (plugin *ImporterPluginServer) CloseReader(ctx context.Context, req *grpc_importer.CloseReaderRequest) (*grpc_importer.CloseReaderResponse, error) {
 	pathname := req.Pathname
-
 
 	plugin.mu.Lock()
 	defer plugin.mu.Unlock()
@@ -150,6 +147,23 @@ func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importe
 		}
 		delete(plugin.holdingReaders, pathname)
 	}
+
+	return &grpc_importer.CloseReaderResponse{}, nil
+}
+
+func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importer.CloseRequest) (*grpc_importer.CloseResponse, error) {
+	if err := plugin.importer.Close(); err != nil {
+		return nil, err
+	}
+
+	plugin.mu.Lock()
+	defer plugin.mu.Unlock()
+	for _, reader := range plugin.holdingReaders {
+		if err := reader.Close(); err != nil {
+			return nil, err
+		}
+	}
+	plugin.holdingReaders = make(map[string]io.ReadCloser)
 
 	return &grpc_importer.CloseResponse{}, nil
 }
