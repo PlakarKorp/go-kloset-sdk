@@ -152,10 +152,6 @@ func (plugin *ImporterPluginServer) CloseReader(ctx context.Context, req *grpc_i
 }
 
 func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importer.CloseRequest) (*grpc_importer.CloseResponse, error) {
-	if err := plugin.importer.Close(); err != nil {
-		return nil, err
-	}
-
 	plugin.mu.Lock()
 	defer plugin.mu.Unlock()
 	for _, reader := range plugin.holdingReaders {
@@ -164,6 +160,10 @@ func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importe
 		}
 	}
 	plugin.holdingReaders = make(map[string]io.ReadCloser)
+
+	if err := plugin.importer.Close(); err != nil {
+		return nil, err
+	}
 
 	return &grpc_importer.CloseResponse{}, nil
 }
