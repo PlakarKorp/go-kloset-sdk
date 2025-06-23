@@ -88,26 +88,19 @@ func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_stor
 }
 
 func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
-	rd := &plakar_grpc_storage.GrpcChunkReader{
-		StreamRecv: func() ([]byte, error) {
-			req, err := stream.Recv()
-			if err != nil {
-				return nil, err
-			}
-			return req.Chunk, nil
-		},
-	}
-
-	req, err := stream.Recv() // Read the first request to get the MAC,
+	req, err := stream.Recv() // Read the first request to get the MAC
 	if err != nil {
 		return err
 	}
 	mac := objects.MAC(req.Mac.Value)
-	rd.Buf.Write(req.Chunk) // Initialize the buffer with the first chunk
-	// this is hacky, to fix it we need to change the PutStateRequest to include only the MAC in the first request,
-	// and then send the chunks in later requests
 
-	size, err := plugin.storage.PutState(mac, rd)
+	size, err := plugin.storage.PutState(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+		req, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		}
+		return req.Chunk, nil
+	}))
 	if err != nil {
 		return err
 	}
@@ -166,26 +159,19 @@ func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_s
 }
 
 func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
-	rd := &plakar_grpc_storage.GrpcChunkReader{
-		StreamRecv: func() ([]byte, error) {
-			req, err := stream.Recv()
-			if err != nil {
-				return nil, err
-			}
-			return req.Chunk, nil
-		},
-	}
-
-	req, err := stream.Recv() // Read the first request to get the MAC,
+	req, err := stream.Recv() // Read the first request to get the MAC
 	if err != nil {
 		return err
 	}
 	mac := objects.MAC(req.Mac.Value)
-	rd.Buf.Write(req.Chunk) // Initialize the buffer with the first chunk
-	// this is hacky, to fix it we need to change the PutStateRequest to include only the MAC in the first request,
-	// and then send the chunks in later requests
 
-	size, err := plugin.storage.PutPackfile(mac, rd)
+	size, err := plugin.storage.PutPackfile(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+		req, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		}
+		return req.Chunk, nil
+	}))
 	if err != nil {
 		return err
 	}
@@ -261,26 +247,19 @@ func (plugin *StoragePluginServer) GetLocks(ctx context.Context, req *grpc_stora
 }
 
 func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServer) error {
-	rd := &plakar_grpc_storage.GrpcChunkReader{
-		StreamRecv: func() ([]byte, error) {
-			req, err := stream.Recv()
-			if err != nil {
-				return nil, err
-			}
-			return req.Chunk, nil
-		},
-	}
-
-	req, err := stream.Recv() // Read the first request to get the MAC,
+	req, err := stream.Recv() // Read the first request to get the MAC
 	if err != nil {
 		return err
 	}
 	mac := objects.MAC(req.Mac.Value)
-	rd.Buf.Write(req.Chunk) // Initialize the buffer with the first chunk
-	// this is hacky, to fix it we need to change the PutStateRequest to include only the MAC in the first request,
-	// and then send the chunks in later requests
 
-	size, err := plugin.storage.PutLock(mac, rd)
+	size, err := plugin.storage.PutLock(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+		req, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		}
+		return req.Chunk, nil
+	}))
 	if err != nil {
 		return err
 	}
