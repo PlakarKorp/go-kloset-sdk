@@ -3,8 +3,6 @@ package sdk
 import (
 	"context"
 	"fmt"
-	"io"
-
 	"github.com/PlakarKorp/kloset/kcontext"
 	"github.com/PlakarKorp/kloset/objects"
 
@@ -130,25 +128,12 @@ func (plugin *StoragePluginServer) GetState(req *grpc_storage.GetStateRequest, s
 		return err
 	}
 
-	buf := make([]byte, plakar_grpc_storage.BufferSize)
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetStateResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetStateResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) DeleteState(ctx context.Context, req *grpc_storage.DeleteStateRequest) (*grpc_storage.DeleteStateResponse, error) {
@@ -221,25 +206,12 @@ func (plugin *StoragePluginServer) GetPackfile(req *grpc_storage.GetPackfileRequ
 		return err
 	}
 
-	buf := make([]byte, plakar_grpc_storage.BufferSize)
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetPackfileResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetPackfileResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfileBlobRequest, stream grpc_storage.Store_GetPackfileBlobServer) error {
@@ -251,25 +223,12 @@ func (plugin *StoragePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfile
 		return err
 	}
 
-	buf := make([]byte, plakar_grpc_storage.BufferSize)
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetPackfileBlobResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetPackfileBlobResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) DeletePackfile(ctx context.Context, req *grpc_storage.DeletePackfileRequest) (*grpc_storage.DeletePackfileResponse, error) {
@@ -342,25 +301,12 @@ func (plugin *StoragePluginServer) GetLock(req *grpc_storage.GetLockRequest, str
 		return err
 	}
 
-	buf := make([]byte, plakar_grpc_storage.BufferSize)
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetLockResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetLockResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_storage.DeleteLockRequest) (*grpc_storage.DeleteLockResponse, error) {
