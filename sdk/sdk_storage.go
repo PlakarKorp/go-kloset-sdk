@@ -1,16 +1,14 @@
 package sdk
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-
 	"github.com/PlakarKorp/kloset/kcontext"
 	"github.com/PlakarKorp/kloset/objects"
 
-	grpc_storage "github.com/PlakarKorp/plakar/connectors/grpc/storage/pkg"
 	plakar_storage "github.com/PlakarKorp/kloset/storage"
+	plakar_grpc_storage "github.com/PlakarKorp/plakar/connectors/grpc/storage"
+	grpc_storage "github.com/PlakarKorp/plakar/connectors/grpc/storage/pkg"
 
 	"google.golang.org/grpc"
 )
@@ -90,26 +88,19 @@ func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_stor
 }
 
 func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
-	var buffer bytes.Buffer
-	var mac objects.MAC
-
-	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		mac = objects.MAC(req.Mac.Value)
-
-		_, err = buffer.Write(req.Chunk)
-		if err != nil {
-			return err
-		}
+	req, err := stream.Recv() // Read the first request to get the MAC
+	if err != nil {
+		return err
 	}
+	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutState(mac, bytes.NewReader(buffer.Bytes()))
+	size, err := plugin.storage.PutState(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+		req, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		}
+		return req.Chunk, nil
+	}))
 	if err != nil {
 		return err
 	}
@@ -130,25 +121,12 @@ func (plugin *StoragePluginServer) GetState(req *grpc_storage.GetStateRequest, s
 		return err
 	}
 
-	buf := make([]byte, 4096) // 4KB buffer size
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetStateResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetStateResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) DeleteState(ctx context.Context, req *grpc_storage.DeleteStateRequest) (*grpc_storage.DeleteStateResponse, error) {
@@ -181,26 +159,19 @@ func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_s
 }
 
 func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
-	var buffer bytes.Buffer
-	var mac objects.MAC
-
-	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		mac = objects.MAC(req.Mac.Value)
-
-		_, err = buffer.Write(req.Chunk)
-		if err != nil {
-			return err
-		}
+	req, err := stream.Recv() // Read the first request to get the MAC
+	if err != nil {
+		return err
 	}
+	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutPackfile(mac, bytes.NewReader(buffer.Bytes()))
+	size, err := plugin.storage.PutPackfile(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+		req, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		}
+		return req.Chunk, nil
+	}))
 	if err != nil {
 		return err
 	}
@@ -221,25 +192,12 @@ func (plugin *StoragePluginServer) GetPackfile(req *grpc_storage.GetPackfileRequ
 		return err
 	}
 
-	buf := make([]byte, 4096) // 4KB buffer size
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetPackfileResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetPackfileResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfileBlobRequest, stream grpc_storage.Store_GetPackfileBlobServer) error {
@@ -251,25 +209,12 @@ func (plugin *StoragePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfile
 		return err
 	}
 
-	buf := make([]byte, 4096) // 4KB buffer size
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetPackfileBlobResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetPackfileBlobResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) DeletePackfile(ctx context.Context, req *grpc_storage.DeletePackfileRequest) (*grpc_storage.DeletePackfileResponse, error) {
@@ -302,28 +247,19 @@ func (plugin *StoragePluginServer) GetLocks(ctx context.Context, req *grpc_stora
 }
 
 func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServer) error {
-	var size int64
-	var buffer bytes.Buffer
-	var mac objects.MAC
-
-	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		mac = objects.MAC(req.Mac.Value)
-
-		_, err = buffer.Write(req.Chunk)
-		if err != nil {
-			return err
-		}
+	req, err := stream.Recv() // Read the first request to get the MAC
+	if err != nil {
+		return err
 	}
+	mac := objects.MAC(req.Mac.Value)
 
-	s, err := plugin.storage.PutLock(mac, bytes.NewReader(buffer.Bytes()))
-	size += s
+	size, err := plugin.storage.PutLock(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+		req, err := stream.Recv()
+		if err != nil {
+			return nil, err
+		}
+		return req.Chunk, nil
+	}))
 	if err != nil {
 		return err
 	}
@@ -344,25 +280,12 @@ func (plugin *StoragePluginServer) GetLock(req *grpc_storage.GetLockRequest, str
 		return err
 	}
 
-	buf := make([]byte, 4096) // 4KB buffer size
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			if err := stream.Send(&grpc_storage.GetLockResponse{
-				Chunk: buf[:n],
-			}); err != nil {
-				return err
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+		return stream.Send(&grpc_storage.GetLockResponse{
+			Chunk: chunk,
+		})
+	})
+	return err
 }
 
 func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_storage.DeleteLockRequest) (*grpc_storage.DeleteLockResponse, error) {
