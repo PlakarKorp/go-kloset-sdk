@@ -27,8 +27,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/PlakarKorp/kloset/snapshot/importer"
 	"github.com/PlakarKorp/go-kloset-sdk/sdk"
+	"github.com/PlakarKorp/kloset/snapshot/importer"
 )
 
 type FSImporter struct {
@@ -45,9 +45,9 @@ func NewFSImporter(appCtx context.Context, opts *importer.Options, name string, 
 	location := config["location"]
 	rootDir := strings.TrimPrefix(location, "fis://")
 
-	if !path.IsAbs(rootDir) {
-		return nil, fmt.Errorf("not an absolute path %s", location)
-	}
+	// if !path.IsAbs(rootDir) {
+	// 	return nil, fmt.Errorf("not an absolute path %s", location)
+	// }
 
 	rootDir = path.Clean(rootDir)
 
@@ -180,36 +180,12 @@ func (p *FSImporter) Root() string {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf("Usage: %s <scan-dir>\n", os.Args[0])
+	if len(os.Args) != 1 {
+		fmt.Printf("Usage: %s\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	argStr := os.Args[1]
-	argStr = strings.TrimPrefix(argStr, "map[")
-	argStr = strings.TrimSuffix(argStr, "]")
-	scanMap := make(map[string]string)
-	for _, pair := range strings.Fields(argStr) {
-		kv := strings.SplitN(pair, ":", 2)
-		if len(kv) == 2 {
-			scanMap[kv[0]] = kv[1]
-		}
-	}
-
-	opts := importer.Options{
-		Hostname:        "localhost",
-		OperatingSystem: "linux",
-		Architecture:    "amd64",
-		CWD:             "/",
-		MaxConcurrency:  4,
-	}
-
-	fsImporter, err := NewFSImporter(context.Background(), &opts, "fis", scanMap)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := sdk.RunImporter(fsImporter); err != nil {
+	if err := sdk.RunImporter(NewFSImporter); err != nil {
 		panic(err)
 	}
 }

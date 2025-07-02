@@ -13,11 +13,31 @@ import (
 )
 
 type ImporterPluginServer struct {
+	constructor    kloset_importer.ImporterFn
 	importer       kloset_importer.Importer
 	mu             sync.Mutex
 	holdingReaders map[string]io.ReadCloser
 
 	grpc_importer.UnimplementedImporterServer
+}
+
+func (plugin *ImporterPluginServer) Init(ctx context.Context, req *grpc_importer.InitRequest) (*grpc_importer.InitResponse, error) {
+	opts := kloset_importer.Options{
+		Hostname:        req.Options.Hostname,
+		OperatingSystem: req.Options.Os,
+		Architecture:    req.Options.Arch,
+		CWD:             req.Options.Cwd,
+		MaxConcurrency:  int(req.Options.Maxconcurrency),
+		// XXX stdin/out/err are missing
+	}
+
+	imp, err := plugin.constructor(ctx, &opts, req.Proto, req.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin.importer = imp
+	return &grpc_importer.InitResponse{}, nil
 }
 
 func (plugin *ImporterPluginServer) Info(ctx context.Context, req *grpc_importer.InfoRequest) (*grpc_importer.InfoResponse, error) {
@@ -168,7 +188,7 @@ func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importe
 	return &grpc_importer.CloseResponse{}, nil
 }
 
-func RunImporter(imp kloset_importer.Importer) error {
+func RunImporter(constructor kloset_importer.ImporterFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)
@@ -177,7 +197,7 @@ func RunImporter(imp kloset_importer.Importer) error {
 
 	server := grpc.NewServer()
 	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{
-		importer:       imp,
+		constructor:    constructor,
 		holdingReaders: make(map[string]io.ReadCloser),
 	})
 

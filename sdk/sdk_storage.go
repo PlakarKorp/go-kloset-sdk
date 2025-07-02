@@ -14,9 +14,20 @@ import (
 )
 
 type StoragePluginServer struct {
-	storage plakar_storage.Store
+	constructor plakar_storage.StoreFn
+	storage     plakar_storage.Store
 
 	grpc_storage.UnimplementedStoreServer
+}
+
+func (plugin *StoragePluginServer) Init(ctx context.Context, req *grpc_storage.InitRequest) (*grpc_storage.InitResponse, error) {
+	storage, err := plugin.constructor(ctx, req.Proto, req.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin.storage = storage
+	return &grpc_storage.InitResponse{}, nil
 }
 
 func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
@@ -297,7 +308,7 @@ func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_sto
 	return &grpc_storage.DeleteLockResponse{}, nil
 }
 
-func RunStorage(storage plakar_storage.Store) error {
+func RunStorage(constructor plakar_storage.StoreFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)
@@ -306,7 +317,9 @@ func RunStorage(storage plakar_storage.Store) error {
 
 	server := grpc.NewServer()
 
-	grpc_storage.RegisterStoreServer(server, &StoragePluginServer{storage: storage})
+	grpc_storage.RegisterStoreServer(server, &StoragePluginServer{
+		constructor: constructor,
+	})
 
 	if err := server.Serve(listener); err != nil {
 		return err

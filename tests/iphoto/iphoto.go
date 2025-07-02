@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/PlakarKorp/go-kloset-sdk/sdk"
-	"github.com/PlakarKorp/kloset/kcontext"
 	"github.com/PlakarKorp/kloset/objects"
 	"github.com/PlakarKorp/kloset/snapshot/importer"
 )
@@ -216,7 +215,7 @@ func (p *iCloudPhotoImporter) Scan() (<-chan *importer.ScanResult, error) {
 	return results, nil
 }
 
-func (p *iCloudPhotoImporter) NewReader(pathname string) (io.ReadCloser) {
+func (p *iCloudPhotoImporter) NewReader(pathname string) io.ReadCloser {
 	if pathname == "/" {
 		return nil
 	}
@@ -260,27 +259,12 @@ func (p *iCloudPhotoImporter) Type() string {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf("Usage: %s <scan-dir>\n", os.Args[0])
+	if len(os.Args) != 1 {
+		fmt.Printf("Usage: %s\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	argStr := os.Args[1]
-	argStr = strings.TrimPrefix(argStr, "map[")
-	argStr = strings.TrimSuffix(argStr, "]")
-	scanMap := make(map[string]string)
-	for _, pair := range strings.Fields(argStr) {
-		kv := strings.SplitN(pair, ":", 2)
-		if len(kv) == 2 {
-			scanMap[kv[0]] = kv[1]
-		}
-	}
-	icloudImporter, err := NewiCloudPhotoImporter(kcontext.NewKContext(), nil, "iphoto", scanMap)
-	if err != nil {
-		panic(err)
-	}
-	if err := sdk.RunImporter(icloudImporter); err != nil {
+	if err := sdk.RunImporter(NewiCloudPhotoImporter); err != nil {
 		panic(err)
 	}
 }
-

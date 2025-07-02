@@ -18,7 +18,6 @@ import (
 	"github.com/PlakarKorp/kloset/storage"
 )
 
-
 type Storage struct {
 	location  string
 	packfiles Buckets
@@ -101,7 +100,6 @@ func (s *Storage) Open(ctx context.Context) ([]byte, error) {
 
 	return data, nil
 }
-
 
 func (s *Storage) Mode() storage.Mode {
 	return storage.ModeRead | storage.ModeWrite
@@ -236,30 +234,13 @@ func (s *Storage) DeleteLock(lockID objects.MAC) error {
 	return nil
 }
 
-
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Printf("Usage: %s <scan-dir>\n", os.Args[0])
+	if len(os.Args) != 1 {
+		fmt.Printf("Usage: %s\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	argStr := os.Args[1]
-	argStr = strings.TrimPrefix(argStr, "map[")
-	argStr = strings.TrimSuffix(argStr, "]")
-	scanMap := make(map[string]string)
-	for _, pair := range strings.Fields(argStr) {
-		kv := strings.SplitN(pair, ":", 2)
-		if len(kv) == 2 {
-			scanMap[kv[0]] = kv[1]
-		}
-	}
-
-	fsStorage, err := NewStore(context.Background(), "fis", scanMap)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := sdk.RunStorage(fsStorage); err != nil {
+	if err := sdk.RunStorage(NewStore); err != nil {
 		panic(err)
 	}
 }
