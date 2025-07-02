@@ -8,17 +8,31 @@ import (
 	"io/fs"
 
 	"github.com/PlakarKorp/kloset/objects"
-
-	grpc_exporter "github.com/PlakarKorp/plakar/connectors/grpc/exporter/pkg"
 	plakar_exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
-
+	grpc_exporter "github.com/PlakarKorp/plakar/connectors/grpc/exporter/pkg"
 	"google.golang.org/grpc"
 )
 
 type exporterPluginServer struct {
-	exporter plakar_exporter.Exporter
+	constructor plakar_exporter.ExporterFn
+	exporter    plakar_exporter.Exporter
 
 	grpc_exporter.UnimplementedExporterServer
+}
+
+func (plugin *exporterPluginServer) Init(ctx context.Context, req *grpc_exporter.InitRequest) (*grpc_exporter.InitResponse, error) {
+	opts := plakar_exporter.Options{
+		MaxConcurrency: uint64(req.Options.Maxconcurrency),
+		// TODO std*
+	}
+
+	exp, err := plugin.constructor(ctx, &opts, req.Proto, req.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	plugin.exporter = exp
+	return &grpc_exporter.InitResponse{}, nil
 }
 
 func (plugin *exporterPluginServer) Root(ctx context.Context, req *grpc_exporter.RootRequest) (*grpc_exporter.RootResponse, error) {
@@ -45,7 +59,7 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 	if err != nil {
 		return err
 	}
-	
+
 	if req.GetHeader() == nil {
 		return fmt.Errorf("first request must be of type Header, got %v", req.Type)
 	}
@@ -82,23 +96,23 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 
 func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grpc_exporter.SetPermissionsRequest) (*grpc_exporter.SetPermissionsResponse, error) {
 	err := plugin.exporter.SetPermissions(req.Pathname, &objects.FileInfo{
-		Lname : req.FileInfo.Name,
-		Lsize : req.FileInfo.Size,
-		Lmode : fs.FileMode(req.FileInfo.Mode),
-		LmodTime : req.FileInfo.ModTime.AsTime(),
-		Ldev : req.FileInfo.Dev,
-		Lino : req.FileInfo.Ino,
-		Luid : req.FileInfo.Uid,
-		Lgid : req.FileInfo.Gid,
-		Lnlink : uint16(req.FileInfo.Nlink),
-		Lusername : req.FileInfo.Username,
-		Lgroupname : req.FileInfo.Groupname,
-		Flags : req.FileInfo.Flags,
+		Lname:      req.FileInfo.Name,
+		Lsize:      req.FileInfo.Size,
+		Lmode:      fs.FileMode(req.FileInfo.Mode),
+		LmodTime:   req.FileInfo.ModTime.AsTime(),
+		Ldev:       req.FileInfo.Dev,
+		Lino:       req.FileInfo.Ino,
+		Luid:       req.FileInfo.Uid,
+		Lgid:       req.FileInfo.Gid,
+		Lnlink:     uint16(req.FileInfo.Nlink),
+		Lusername:  req.FileInfo.Username,
+		Lgroupname: req.FileInfo.Groupname,
+		Flags:      req.FileInfo.Flags,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &grpc_exporter.SetPermissionsResponse{}, nil	
+	return &grpc_exporter.SetPermissionsResponse{}, nil
 }
 
 func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporter.CloseRequest) (*grpc_exporter.CloseResponse, error) {
@@ -109,7 +123,7 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporte
 	return &grpc_exporter.CloseResponse{}, nil
 }
 
-func RunExporter(exp plakar_exporter.Exporter) error {
+func RunExporter(constructor plakar_exporter.ExporterFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)
@@ -118,7 +132,9 @@ func RunExporter(exp plakar_exporter.Exporter) error {
 
 	server := grpc.NewServer()
 
-	grpc_exporter.RegisterExporterServer(server, &exporterPluginServer{exporter: exp})
+	grpc_exporter.RegisterExporterServer(server, &exporterPluginServer{
+		constructor: constructor,
+	})
 
 	if err := server.Serve(listener); err != nil {
 		return err
