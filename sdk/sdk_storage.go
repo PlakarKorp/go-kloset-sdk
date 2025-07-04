@@ -13,32 +13,32 @@ import (
 	"google.golang.org/grpc"
 )
 
-// StoragePluginServer implements the gRPC server for a Plakar storage backend.
+// storagePluginServer implements the gRPC server for a Plakar storage backend.
 // It exposes a Store interface over gRPC for remote use.
-type StoragePluginServer struct {
-	// Constructor creates a new storage backend.
-	Constructor plakar_storage.StoreFn
+type storagePluginServer struct {
+	// constructor creates a new storage backend.
+	constructor plakar_storage.StoreFn
 
-	// Storage is the active Storage backend.
-	Storage plakar_storage.Store
+	// storage is the active storage backend.
+	storage plakar_storage.Store
 
 	grpc_storage.UnimplementedStoreServer
 }
 
 // Init initializes the storage backend with proto and configuration.
-func (plugin *StoragePluginServer) Init(ctx context.Context, req *grpc_storage.InitRequest) (*grpc_storage.InitResponse, error) {
-	storage, err := plugin.Constructor(ctx, req.Proto, req.Config)
+func (plugin *storagePluginServer) Init(ctx context.Context, req *grpc_storage.InitRequest) (*grpc_storage.InitResponse, error) {
+	storage, err := plugin.constructor(ctx, req.Proto, req.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	plugin.Storage = storage
+	plugin.storage = storage
 	return &grpc_storage.InitResponse{}, nil
 }
 
 // Create creates a new storage with given configuration.
-func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
-	err := plugin.Storage.Create(kcontext.NewKContext(), req.Config)
+func (plugin *storagePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
+	err := plugin.storage.Create(kcontext.NewKContext(), req.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +46,8 @@ func (plugin *StoragePluginServer) Create(ctx context.Context, req *grpc_storage
 }
 
 // Open opens an existing storage and returns its configuration.
-func (plugin *StoragePluginServer) Open(ctx context.Context, req *grpc_storage.OpenRequest) (*grpc_storage.OpenResponse, error) {
-	b, err := plugin.Storage.Open(ctx)
+func (plugin *storagePluginServer) Open(ctx context.Context, req *grpc_storage.OpenRequest) (*grpc_storage.OpenResponse, error) {
+	b, err := plugin.storage.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +57,8 @@ func (plugin *StoragePluginServer) Open(ctx context.Context, req *grpc_storage.O
 }
 
 // Close closes the storage backend.
-func (plugin *StoragePluginServer) Close(ctx context.Context, req *grpc_storage.CloseRequest) (*grpc_storage.CloseResponse, error) {
-	err := plugin.Storage.Close()
+func (plugin *storagePluginServer) Close(ctx context.Context, req *grpc_storage.CloseRequest) (*grpc_storage.CloseResponse, error) {
+	err := plugin.storage.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -66,32 +66,32 @@ func (plugin *StoragePluginServer) Close(ctx context.Context, req *grpc_storage.
 }
 
 // GetLocation returns the storage backend location string.
-func (plugin *StoragePluginServer) GetLocation(ctx context.Context, req *grpc_storage.GetLocationRequest) (*grpc_storage.GetLocationResponse, error) {
-	location := plugin.Storage.Location()
+func (plugin *storagePluginServer) GetLocation(ctx context.Context, req *grpc_storage.GetLocationRequest) (*grpc_storage.GetLocationResponse, error) {
+	location := plugin.storage.Location()
 	return &grpc_storage.GetLocationResponse{
 		Location: location,
 	}, nil
 }
 
 // GetMode returns the storage mode (e.g. read-only, read-write).
-func (plugin *StoragePluginServer) GetMode(ctx context.Context, req *grpc_storage.GetModeRequest) (*grpc_storage.GetModeResponse, error) {
-	mode := plugin.Storage.Mode()
+func (plugin *storagePluginServer) GetMode(ctx context.Context, req *grpc_storage.GetModeRequest) (*grpc_storage.GetModeResponse, error) {
+	mode := plugin.storage.Mode()
 	return &grpc_storage.GetModeResponse{
 		Mode: int32(mode),
 	}, nil
 }
 
 // GetSize returns the current storage size in bytes.
-func (plugin *StoragePluginServer) GetSize(ctx context.Context, req *grpc_storage.GetSizeRequest) (*grpc_storage.GetSizeResponse, error) {
-	size := plugin.Storage.Size()
+func (plugin *storagePluginServer) GetSize(ctx context.Context, req *grpc_storage.GetSizeRequest) (*grpc_storage.GetSizeResponse, error) {
+	size := plugin.storage.Size()
 	return &grpc_storage.GetSizeResponse{
 		Size: size,
 	}, nil
 }
 
 // GetStates returns the list of state MACs.
-func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_storage.GetStatesRequest) (*grpc_storage.GetStatesResponse, error) {
-	states, err := plugin.Storage.GetStates()
+func (plugin *storagePluginServer) GetStates(ctx context.Context, req *grpc_storage.GetStatesRequest) (*grpc_storage.GetStatesResponse, error) {
+	states, err := plugin.storage.GetStates()
 	if err != nil {
 		return nil, err
 	}
@@ -111,14 +111,14 @@ func (plugin *StoragePluginServer) GetStates(ctx context.Context, req *grpc_stor
 }
 
 // PutState uploads a state to the storage using chunked streaming.
-func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
+func (plugin *storagePluginServer) PutState(stream grpc_storage.Store_PutStateServer) error {
 	req, err := stream.Recv() // Read the first request to get the MAC
 	if err != nil {
 		return err
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.Storage.PutState(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutState(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -136,9 +136,9 @@ func (plugin *StoragePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 }
 
 // GetState streams the requested state from the storage.
-func (plugin *StoragePluginServer) GetState(req *grpc_storage.GetStateRequest, stream grpc_storage.Store_GetStateServer) error {
+func (plugin *storagePluginServer) GetState(req *grpc_storage.GetStateRequest, stream grpc_storage.Store_GetStateServer) error {
 	mac := objects.MAC(req.Mac.Value)
-	r, err := plugin.Storage.GetState(mac)
+	r, err := plugin.storage.GetState(mac)
 	if err != nil {
 		return err
 	}
@@ -152,9 +152,9 @@ func (plugin *StoragePluginServer) GetState(req *grpc_storage.GetStateRequest, s
 }
 
 // DeleteState deletes a state from the storage.
-func (plugin *StoragePluginServer) DeleteState(ctx context.Context, req *grpc_storage.DeleteStateRequest) (*grpc_storage.DeleteStateResponse, error) {
+func (plugin *storagePluginServer) DeleteState(ctx context.Context, req *grpc_storage.DeleteStateRequest) (*grpc_storage.DeleteStateResponse, error) {
 	mac := objects.MAC(req.Mac.Value)
-	err := plugin.Storage.DeleteState(mac)
+	err := plugin.storage.DeleteState(mac)
 	if err != nil {
 		return nil, err
 	}
@@ -162,8 +162,8 @@ func (plugin *StoragePluginServer) DeleteState(ctx context.Context, req *grpc_st
 }
 
 // GetPackfiles returns all packfile MACs.
-func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_storage.GetPackfilesRequest) (*grpc_storage.GetPackfilesResponse, error) {
-	packfiles, err := plugin.Storage.GetPackfiles()
+func (plugin *storagePluginServer) GetPackfiles(ctx context.Context, req *grpc_storage.GetPackfilesRequest) (*grpc_storage.GetPackfilesResponse, error) {
+	packfiles, err := plugin.storage.GetPackfiles()
 	if err != nil {
 		return nil, err
 	}
@@ -183,14 +183,14 @@ func (plugin *StoragePluginServer) GetPackfiles(ctx context.Context, req *grpc_s
 }
 
 // PutPackfile uploads a packfile using chunked streaming.
-func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
+func (plugin *storagePluginServer) PutPackfile(stream grpc_storage.Store_PutPackfileServer) error {
 	req, err := stream.Recv() // Read the first request to get the MAC
 	if err != nil {
 		return err
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.Storage.PutPackfile(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutPackfile(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -208,9 +208,9 @@ func (plugin *StoragePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 }
 
 // GetPackfile streams the requested packfile.
-func (plugin *StoragePluginServer) GetPackfile(req *grpc_storage.GetPackfileRequest, stream grpc_storage.Store_GetPackfileServer) error {
+func (plugin *storagePluginServer) GetPackfile(req *grpc_storage.GetPackfileRequest, stream grpc_storage.Store_GetPackfileServer) error {
 	mac := objects.MAC(req.Mac.Value)
-	r, err := plugin.Storage.GetPackfile(mac)
+	r, err := plugin.storage.GetPackfile(mac)
 	if err != nil {
 		return err
 	}
@@ -224,11 +224,11 @@ func (plugin *StoragePluginServer) GetPackfile(req *grpc_storage.GetPackfileRequ
 }
 
 // GetPackfileBlob streams a blob portion from a packfile.
-func (plugin *StoragePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfileBlobRequest, stream grpc_storage.Store_GetPackfileBlobServer) error {
+func (plugin *storagePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfileBlobRequest, stream grpc_storage.Store_GetPackfileBlobServer) error {
 	mac := objects.MAC(req.Mac.Value)
 	offset := req.Offset
 	length := req.Length
-	r, err := plugin.Storage.GetPackfileBlob(mac, offset, length)
+	r, err := plugin.storage.GetPackfileBlob(mac, offset, length)
 	if err != nil {
 		return err
 	}
@@ -242,9 +242,9 @@ func (plugin *StoragePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfile
 }
 
 // DeletePackfile deletes a packfile from the storage.
-func (plugin *StoragePluginServer) DeletePackfile(ctx context.Context, req *grpc_storage.DeletePackfileRequest) (*grpc_storage.DeletePackfileResponse, error) {
+func (plugin *storagePluginServer) DeletePackfile(ctx context.Context, req *grpc_storage.DeletePackfileRequest) (*grpc_storage.DeletePackfileResponse, error) {
 	mac := objects.MAC(req.Mac.Value)
-	err := plugin.Storage.DeletePackfile(mac)
+	err := plugin.storage.DeletePackfile(mac)
 	if err != nil {
 		return nil, err
 	}
@@ -252,8 +252,8 @@ func (plugin *StoragePluginServer) DeletePackfile(ctx context.Context, req *grpc
 }
 
 // GetLocks returns all lock MACs.
-func (plugin *StoragePluginServer) GetLocks(ctx context.Context, req *grpc_storage.GetLocksRequest) (*grpc_storage.GetLocksResponse, error) {
-	locks, err := plugin.Storage.GetLocks()
+func (plugin *storagePluginServer) GetLocks(ctx context.Context, req *grpc_storage.GetLocksRequest) (*grpc_storage.GetLocksResponse, error) {
+	locks, err := plugin.storage.GetLocks()
 	if err != nil {
 		return nil, err
 	}
@@ -273,14 +273,14 @@ func (plugin *StoragePluginServer) GetLocks(ctx context.Context, req *grpc_stora
 }
 
 // PutLock uploads a lock using chunked streaming.
-func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServer) error {
+func (plugin *storagePluginServer) PutLock(stream grpc_storage.Store_PutLockServer) error {
 	req, err := stream.Recv() // Read the first request to get the MAC
 	if err != nil {
 		return err
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.Storage.PutLock(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutLock(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -298,9 +298,9 @@ func (plugin *StoragePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 }
 
 // GetLock streams a lock by MAC.
-func (plugin *StoragePluginServer) GetLock(req *grpc_storage.GetLockRequest, stream grpc_storage.Store_GetLockServer) error {
+func (plugin *storagePluginServer) GetLock(req *grpc_storage.GetLockRequest, stream grpc_storage.Store_GetLockServer) error {
 	mac := objects.MAC(req.Mac.Value)
-	r, err := plugin.Storage.GetLock(mac)
+	r, err := plugin.storage.GetLock(mac)
 	if err != nil {
 		return err
 	}
@@ -314,9 +314,9 @@ func (plugin *StoragePluginServer) GetLock(req *grpc_storage.GetLockRequest, str
 }
 
 // DeleteLock deletes a lock from the storage.
-func (plugin *StoragePluginServer) DeleteLock(ctx context.Context, req *grpc_storage.DeleteLockRequest) (*grpc_storage.DeleteLockResponse, error) {
+func (plugin *storagePluginServer) DeleteLock(ctx context.Context, req *grpc_storage.DeleteLockRequest) (*grpc_storage.DeleteLockResponse, error) {
 	mac := objects.MAC(req.Mac.Value)
-	err := plugin.Storage.DeleteLock(mac)
+	err := plugin.storage.DeleteLock(mac)
 	if err != nil {
 		return nil, err
 	}
@@ -333,8 +333,8 @@ func RunStorage(constructor plakar_storage.StoreFn) error {
 
 	server := grpc.NewServer()
 
-	grpc_storage.RegisterStoreServer(server, &StoragePluginServer{
-		Constructor: constructor,
+	grpc_storage.RegisterStoreServer(server, &storagePluginServer{
+		constructor: constructor,
 	})
 
 	if err := server.Serve(listener); err != nil {
