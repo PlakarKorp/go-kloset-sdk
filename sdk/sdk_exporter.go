@@ -13,17 +13,26 @@ import (
 	"google.golang.org/grpc"
 )
 
+// exporterPluginServer implements the gRPC Exporter service.
+// It wraps a Plakar exporter and handles incoming RPCs for exporting snapshot data.
 type exporterPluginServer struct {
+	// constructor is the factory function used to create a new exporter instance.
 	constructor plakar_exporter.ExporterFn
-	exporter    plakar_exporter.Exporter
 
+	// exporter is the underlying Plakar exporter implementation.
+	exporter plakar_exporter.Exporter
+
+	// UnimplementedExporterServer must be embedded for forward compatibility.
 	grpc_exporter.UnimplementedExporterServer
 }
 
+// Init initializes the exporter with given options and configuration.
+//
+// It must be called first. It uses the constructor to create the concrete exporter.
 func (plugin *exporterPluginServer) Init(ctx context.Context, req *grpc_exporter.InitRequest) (*grpc_exporter.InitResponse, error) {
 	opts := plakar_exporter.Options{
 		MaxConcurrency: uint64(req.Options.Maxconcurrency),
-		// TODO std*
+		// TODO: Add stdin/stdout/stderr support if needed.
 	}
 
 	exp, err := plugin.constructor(ctx, &opts, req.Proto, req.Config)
@@ -35,12 +44,14 @@ func (plugin *exporterPluginServer) Init(ctx context.Context, req *grpc_exporter
 	return &grpc_exporter.InitResponse{}, nil
 }
 
+// Root returns the root filesystem path where the exporter writes files.
 func (plugin *exporterPluginServer) Root(ctx context.Context, req *grpc_exporter.RootRequest) (*grpc_exporter.RootResponse, error) {
 	return &grpc_exporter.RootResponse{
 		RootPath: plugin.exporter.Root(),
 	}, nil
 }
 
+// CreateDirectory creates a new directory at the given pathname.
 func (plugin *exporterPluginServer) CreateDirectory(ctx context.Context, req *grpc_exporter.CreateDirectoryRequest) (*grpc_exporter.CreateDirectoryResponse, error) {
 	err := plugin.exporter.CreateDirectory(req.Pathname)
 	if err != nil {
@@ -49,6 +60,8 @@ func (plugin *exporterPluginServer) CreateDirectory(ctx context.Context, req *gr
 	return &grpc_exporter.CreateDirectoryResponse{}, nil
 }
 
+// StoreFile receives file data in streamed chunks and writes it to the exporter.
+// The first request must contain a Header with pathname and size.
 func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_StoreFileServer) error {
 	var buf bytes.Buffer
 
@@ -94,6 +107,8 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 	return stream.SendAndClose(&grpc_exporter.StoreFileResponse{})
 }
 
+// SetPermissions updates the file system metadata for a given path,
+// including mode, ownership and timestamps.
 func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grpc_exporter.SetPermissionsRequest) (*grpc_exporter.SetPermissionsResponse, error) {
 	err := plugin.exporter.SetPermissions(req.Pathname, &objects.FileInfo{
 		Lname:      req.FileInfo.Name,
@@ -115,6 +130,7 @@ func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grp
 	return &grpc_exporter.SetPermissionsResponse{}, nil
 }
 
+// Close finalizes the exporter, ensuring that all data is flushed and resources are released.
 func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporter.CloseRequest) (*grpc_exporter.CloseResponse, error) {
 	err := plugin.exporter.Close()
 	if err != nil {
@@ -123,6 +139,9 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporte
 	return &grpc_exporter.CloseResponse{}, nil
 }
 
+// RunExporter launches the gRPC server for an exporter plugin.
+//
+// The given constructor will be used to initialize the exporter instance.
 func RunExporter(constructor plakar_exporter.ExporterFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
