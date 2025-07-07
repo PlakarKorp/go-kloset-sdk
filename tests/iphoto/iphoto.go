@@ -30,7 +30,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PlakarKorp/go-kloset-sdk/sdk"
+	"github.com/PlakarKorp/go-kloset-sdk"
 	"github.com/PlakarKorp/kloset/objects"
 	"github.com/PlakarKorp/kloset/snapshot/importer"
 )
