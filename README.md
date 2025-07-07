@@ -1,5 +1,7 @@
 # go-kloset-sdk
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/PlakarKorp/go-kloset-sdk/.svg)](https://pkg.go.dev/github.com/PlakarKorp/go-kloset-sdk/)
+
 The Golang Kloset SDK allows to extend [Plakar][plakar] capabilities
 by writing plugins to provide new sources for backups, destinations
 for restore and storage for klosets.
