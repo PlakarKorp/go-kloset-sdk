@@ -20,7 +20,7 @@ Rust, please take a look at the [rust-kloset-sdk][rust-sdk]
         $ go get github.com/PlakarKorp/go-kloset-sdk
 
 2. Implement the [Importer][importer], [Exporter][exporter], or
-   [Store][store] interface.
+   [Store][storage] interface.
 
 3. Provide one binary per each integration, and call the SDK from your
    `main` function.  For example, the main entrypoint for an Importer
