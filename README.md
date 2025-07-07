@@ -41,7 +41,7 @@ func NewAmazingImporter(ctx context.Context, opts *importer.Options, name string
 }
 
 func main() {
-	sdk.RunImporter(NewFSImporter)
+	sdk.RunImporter(NewAmazingImporter)
 }
 ```
 
