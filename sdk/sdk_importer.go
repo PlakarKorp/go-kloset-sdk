@@ -12,23 +12,33 @@ import (
 	"sync"
 )
 
-type ImporterPluginServer struct {
-	constructor    kloset_importer.ImporterFn
-	importer       kloset_importer.Importer
-	mu             sync.Mutex
+// importerPluginServer implements the gRPC server for a Plakar importer plugin.
+// It wraps a local importer and exposes its methods over gRPC.
+type importerPluginServer struct {
+	// constructor creates a new importer instance with given options.
+	constructor kloset_importer.ImporterFn
+
+	// importer is the active importer instance.
+	importer kloset_importer.Importer
+
+	// mu protects holdingReaders from concurrent access.
+	mu sync.Mutex
+
+	// holdingReaders holds file readers opened by the Scan step.
 	holdingReaders map[string]io.ReadCloser
 
 	grpc_importer.UnimplementedImporterServer
 }
 
-func (plugin *ImporterPluginServer) Init(ctx context.Context, req *grpc_importer.InitRequest) (*grpc_importer.InitResponse, error) {
+// Init initializes the importer with options and configuration.
+func (plugin *importerPluginServer) Init(ctx context.Context, req *grpc_importer.InitRequest) (*grpc_importer.InitResponse, error) {
 	opts := kloset_importer.Options{
 		Hostname:        req.Options.Hostname,
 		OperatingSystem: req.Options.Os,
 		Architecture:    req.Options.Arch,
 		CWD:             req.Options.Cwd,
 		MaxConcurrency:  int(req.Options.Maxconcurrency),
-		// XXX stdin/out/err are missing
+		// TODO: stdin/out/err are missing
 	}
 
 	imp, err := plugin.constructor(ctx, &opts, req.Proto, req.Config)
@@ -40,7 +50,8 @@ func (plugin *ImporterPluginServer) Init(ctx context.Context, req *grpc_importer
 	return &grpc_importer.InitResponse{}, nil
 }
 
-func (plugin *ImporterPluginServer) Info(ctx context.Context, req *grpc_importer.InfoRequest) (*grpc_importer.InfoResponse, error) {
+// Info returns metadata about the importer like type, origin, and root.
+func (plugin *importerPluginServer) Info(ctx context.Context, req *grpc_importer.InfoRequest) (*grpc_importer.InfoResponse, error) {
 	return &grpc_importer.InfoResponse{
 		Type:   plugin.importer.Type(),
 		Origin: plugin.importer.Origin(),
@@ -48,24 +59,20 @@ func (plugin *ImporterPluginServer) Info(ctx context.Context, req *grpc_importer
 	}, nil
 }
 
-func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream grpc_importer.Importer_ScanServer) error {
+// Scan scans for records using the importer and streams them back.
+func (plugin *importerPluginServer) Scan(req *grpc_importer.ScanRequest, stream grpc_importer.Importer_ScanServer) error {
 	scanResults, err := plugin.importer.Scan()
 	if err != nil {
 		return err
 	}
 
 	for result := range scanResults {
-
 		if err := stream.Context().Err(); err != nil {
 			return err
 		}
 
 		switch {
 		case result.Record != nil:
-			if err := stream.Context().Err(); err != nil {
-				return err
-			}
-
 			var xattr *grpc_importer.ExtendedAttribute
 			if result.Record.IsXattr {
 				xattr = &grpc_importer.ExtendedAttribute{
@@ -99,10 +106,10 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 				},
 			}
 
-			if result.Record.FileInfo.Mode()&os.ModeDir != 0 {
-			} else {
+			// If not a directory, store the reader for later OpenReader.
+			if result.Record.FileInfo.Mode()&os.ModeDir == 0 {
 				plugin.mu.Lock()
-				plugin.holdingReaders[result.Record.Pathname] = result.Record.Reader //THE PROGRAM BLOCK HERE
+				plugin.holdingReaders[result.Record.Pathname] = result.Record.Reader
 				plugin.mu.Unlock()
 			}
 			if err := stream.Send(ret); err != nil {
@@ -122,23 +129,25 @@ func (plugin *ImporterPluginServer) Scan(req *grpc_importer.ScanRequest, stream 
 				return err
 			}
 		default:
-			panic("?? unknown result type ??")
+			panic("unknown scan result type")
 		}
 	}
 	return nil
 }
 
-func (plugin *ImporterPluginServer) OpenReader(req *grpc_importer.OpenReaderRequest, stream grpc_importer.Importer_OpenReaderServer) error {
+// OpenReader streams a file's content using the stored reader.
+func (plugin *importerPluginServer) OpenReader(req *grpc_importer.OpenReaderRequest, stream grpc_importer.Importer_OpenReaderServer) error {
 	pathname := req.Pathname
 
 	plugin.mu.Lock()
 	defer plugin.mu.Unlock()
 	reader, ok := plugin.holdingReaders[pathname]
+
 	if !ok {
 		return fmt.Errorf("no reader for pathname %s", pathname)
 	}
 
-	buf := make([]byte, 16*1024) // 16KB buffer
+	buf := make([]byte, 16*1024)
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
@@ -156,7 +165,8 @@ func (plugin *ImporterPluginServer) OpenReader(req *grpc_importer.OpenReaderRequ
 	return nil
 }
 
-func (plugin *ImporterPluginServer) CloseReader(ctx context.Context, req *grpc_importer.CloseReaderRequest) (*grpc_importer.CloseReaderResponse, error) {
+// CloseReader closes an open file reader.
+func (plugin *importerPluginServer) CloseReader(ctx context.Context, req *grpc_importer.CloseReaderRequest) (*grpc_importer.CloseReaderResponse, error) {
 	pathname := req.Pathname
 
 	plugin.mu.Lock()
@@ -171,23 +181,22 @@ func (plugin *ImporterPluginServer) CloseReader(ctx context.Context, req *grpc_i
 	return &grpc_importer.CloseReaderResponse{}, nil
 }
 
-func (plugin *ImporterPluginServer) Close(ctx context.Context, req *grpc_importer.CloseRequest) (*grpc_importer.CloseResponse, error) {
+// Close finalizes the importer and closes all open readers.
+func (plugin *importerPluginServer) Close(ctx context.Context, req *grpc_importer.CloseRequest) (*grpc_importer.CloseResponse, error) {
 	plugin.mu.Lock()
 	defer plugin.mu.Unlock()
 	for _, reader := range plugin.holdingReaders {
-		if err := reader.Close(); err != nil {
-			return nil, err
-		}
+		_ = reader.Close()
 	}
 	plugin.holdingReaders = make(map[string]io.ReadCloser)
 
 	if err := plugin.importer.Close(); err != nil {
 		return nil, err
 	}
-
 	return &grpc_importer.CloseResponse{}, nil
 }
 
+// RunImporter starts the gRPC server for the importer plugin.
 func RunImporter(constructor kloset_importer.ImporterFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
@@ -196,7 +205,7 @@ func RunImporter(constructor kloset_importer.ImporterFn) error {
 	defer conn.Close()
 
 	server := grpc.NewServer()
-	grpc_importer.RegisterImporterServer(server, &ImporterPluginServer{
+	grpc_importer.RegisterImporterServer(server, &importerPluginServer{
 		constructor:    constructor,
 		holdingReaders: make(map[string]io.ReadCloser),
 	})

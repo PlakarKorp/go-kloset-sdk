@@ -3,7 +3,7 @@ module github.com/PlakarKorp/go-kloset-sdk
 go 1.23.3
 
 require (
-	github.com/PlakarKorp/kloset v1.0.1-beta.2.0.20250702124952-75e297b1ec9d
+	github.com/PlakarKorp/kloset v1.0.1-beta.2.0.20250702145050-aafc2807689f
 	github.com/PlakarKorp/plakar v1.0.3-devel.c7a66f1.0.20250702142424-fc56ae69e9e9
 	github.com/pkg/xattr v0.4.12
 	google.golang.org/grpc v1.73.0
