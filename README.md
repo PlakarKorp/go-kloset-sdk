@@ -47,7 +47,44 @@ func main() {
 }
 ```
 
-4. Done!
+4. Write a manifest: in order to build a plugin, Plakar needs a
+   manifest file which describes the plugin.  A simple manifest for a
+   plugin that exposes a source (importer) looks like this:
+
+```yaml
+# manifest.yaml
+name: awesome-importer
+description: an awesome importer
+version: 1.2.3
+connectors:
+- type: importer
+  executable: ./awesome
+  homepage: https://an.awesome.website
+  license: ISC
+  protocols: [awesome]
+```
+
+5. Create and install the plugin:
+
+```sh
+$ plakar pkg create manifest.yaml
+# this will create awesome-importer-v1.2.3.ptar
+$ plakar pkg install ./awesome-importer-v1.2.3.ptar
+$ plakar version
+[...]
+importers: awesome, [...]
+```
+
+6. The plugin can be used by attempting to backup using the `awesome` protocol:
+
+```sh
+$ plakar version                # ensure the plugin was loaded
+[...]
+importers: awesome, [...]
+$ plakar backup awesome://place # actually use it
+```
+
+7. Done!
 
 
 For a complete example, please take a look at the [fs integration][fs]
