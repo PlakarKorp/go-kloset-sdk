@@ -58,7 +58,7 @@ func (plugin *storagePluginServer) Open(ctx context.Context, req *grpc_storage.O
 
 // Close closes the storage backend.
 func (plugin *storagePluginServer) Close(ctx context.Context, req *grpc_storage.CloseRequest) (*grpc_storage.CloseResponse, error) {
-	err := plugin.storage.Close()
+	err := plugin.storage.Close(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,11 @@ func (plugin *storagePluginServer) Close(ctx context.Context, req *grpc_storage.
 
 // GetLocation returns the storage backend location string.
 func (plugin *storagePluginServer) GetLocation(ctx context.Context, req *grpc_storage.GetLocationRequest) (*grpc_storage.GetLocationResponse, error) {
-	location := plugin.storage.Location()
+	location, err := plugin.storage.Location(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &grpc_storage.GetLocationResponse{
 		Location: location,
 	}, nil
@@ -75,7 +79,11 @@ func (plugin *storagePluginServer) GetLocation(ctx context.Context, req *grpc_st
 
 // GetMode returns the storage mode (e.g. read-only, read-write).
 func (plugin *storagePluginServer) GetMode(ctx context.Context, req *grpc_storage.GetModeRequest) (*grpc_storage.GetModeResponse, error) {
-	mode := plugin.storage.Mode()
+	mode, err := plugin.storage.Mode(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &grpc_storage.GetModeResponse{
 		Mode: int32(mode),
 	}, nil
@@ -83,7 +91,11 @@ func (plugin *storagePluginServer) GetMode(ctx context.Context, req *grpc_storag
 
 // GetSize returns the current storage size in bytes.
 func (plugin *storagePluginServer) GetSize(ctx context.Context, req *grpc_storage.GetSizeRequest) (*grpc_storage.GetSizeResponse, error) {
-	size := plugin.storage.Size()
+	size, err := plugin.storage.Size(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &grpc_storage.GetSizeResponse{
 		Size: size,
 	}, nil
@@ -91,7 +103,7 @@ func (plugin *storagePluginServer) GetSize(ctx context.Context, req *grpc_storag
 
 // GetStates returns the list of state MACs.
 func (plugin *storagePluginServer) GetStates(ctx context.Context, req *grpc_storage.GetStatesRequest) (*grpc_storage.GetStatesResponse, error) {
-	states, err := plugin.storage.GetStates()
+	states, err := plugin.storage.GetStates(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +130,7 @@ func (plugin *storagePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutState(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutState(stream.Context(), mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -138,7 +150,7 @@ func (plugin *storagePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 // GetState streams the requested state from the storage.
 func (plugin *storagePluginServer) GetState(req *grpc_storage.GetStateRequest, stream grpc_storage.Store_GetStateServer) error {
 	mac := objects.MAC(req.Mac.Value)
-	r, err := plugin.storage.GetState(mac)
+	r, err := plugin.storage.GetState(stream.Context(), mac)
 	if err != nil {
 		return err
 	}
@@ -154,7 +166,7 @@ func (plugin *storagePluginServer) GetState(req *grpc_storage.GetStateRequest, s
 // DeleteState deletes a state from the storage.
 func (plugin *storagePluginServer) DeleteState(ctx context.Context, req *grpc_storage.DeleteStateRequest) (*grpc_storage.DeleteStateResponse, error) {
 	mac := objects.MAC(req.Mac.Value)
-	err := plugin.storage.DeleteState(mac)
+	err := plugin.storage.DeleteState(ctx, mac)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +175,7 @@ func (plugin *storagePluginServer) DeleteState(ctx context.Context, req *grpc_st
 
 // GetPackfiles returns all packfile MACs.
 func (plugin *storagePluginServer) GetPackfiles(ctx context.Context, req *grpc_storage.GetPackfilesRequest) (*grpc_storage.GetPackfilesResponse, error) {
-	packfiles, err := plugin.storage.GetPackfiles()
+	packfiles, err := plugin.storage.GetPackfiles(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +202,7 @@ func (plugin *storagePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutPackfile(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutPackfile(stream.Context(), mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -210,7 +222,7 @@ func (plugin *storagePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 // GetPackfile streams the requested packfile.
 func (plugin *storagePluginServer) GetPackfile(req *grpc_storage.GetPackfileRequest, stream grpc_storage.Store_GetPackfileServer) error {
 	mac := objects.MAC(req.Mac.Value)
-	r, err := plugin.storage.GetPackfile(mac)
+	r, err := plugin.storage.GetPackfile(stream.Context(), mac)
 	if err != nil {
 		return err
 	}
@@ -228,7 +240,7 @@ func (plugin *storagePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfile
 	mac := objects.MAC(req.Mac.Value)
 	offset := req.Offset
 	length := req.Length
-	r, err := plugin.storage.GetPackfileBlob(mac, offset, length)
+	r, err := plugin.storage.GetPackfileBlob(stream.Context(), mac, offset, length)
 	if err != nil {
 		return err
 	}
@@ -244,7 +256,7 @@ func (plugin *storagePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfile
 // DeletePackfile deletes a packfile from the storage.
 func (plugin *storagePluginServer) DeletePackfile(ctx context.Context, req *grpc_storage.DeletePackfileRequest) (*grpc_storage.DeletePackfileResponse, error) {
 	mac := objects.MAC(req.Mac.Value)
-	err := plugin.storage.DeletePackfile(mac)
+	err := plugin.storage.DeletePackfile(ctx, mac)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +265,7 @@ func (plugin *storagePluginServer) DeletePackfile(ctx context.Context, req *grpc
 
 // GetLocks returns all lock MACs.
 func (plugin *storagePluginServer) GetLocks(ctx context.Context, req *grpc_storage.GetLocksRequest) (*grpc_storage.GetLocksResponse, error) {
-	locks, err := plugin.storage.GetLocks()
+	locks, err := plugin.storage.GetLocks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +292,7 @@ func (plugin *storagePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutLock(mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutLock(stream.Context(), mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -300,7 +312,7 @@ func (plugin *storagePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 // GetLock streams a lock by MAC.
 func (plugin *storagePluginServer) GetLock(req *grpc_storage.GetLockRequest, stream grpc_storage.Store_GetLockServer) error {
 	mac := objects.MAC(req.Mac.Value)
-	r, err := plugin.storage.GetLock(mac)
+	r, err := plugin.storage.GetLock(stream.Context(), mac)
 	if err != nil {
 		return err
 	}
@@ -316,7 +328,7 @@ func (plugin *storagePluginServer) GetLock(req *grpc_storage.GetLockRequest, str
 // DeleteLock deletes a lock from the storage.
 func (plugin *storagePluginServer) DeleteLock(ctx context.Context, req *grpc_storage.DeleteLockRequest) (*grpc_storage.DeleteLockResponse, error) {
 	mac := objects.MAC(req.Mac.Value)
-	err := plugin.storage.DeleteLock(mac)
+	err := plugin.storage.DeleteLock(ctx, mac)
 	if err != nil {
 		return nil, err
 	}

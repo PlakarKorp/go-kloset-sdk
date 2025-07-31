@@ -81,7 +81,7 @@ func checkIcloudpd() error {
 	return nil
 }
 
-func (p *iCloudPhotoImporter) Scan() (<-chan *importer.ScanResult, error) {
+func (p *iCloudPhotoImporter) Scan(ctx context.Context) (<-chan *importer.ScanResult, error) {
 	if err := checkIcloudpd(); err != nil {
 		return nil, fmt.Errorf("icloudpd is not installed: %w", err)
 	}
@@ -239,23 +239,23 @@ func (p *iCloudPhotoImporter) GetExtendedAttributes(pathname string) ([]importer
 	return nil, fmt.Errorf("extended attributes are not supported on iCloud")
 }
 
-func (p *iCloudPhotoImporter) Close() error {
+func (p *iCloudPhotoImporter) Close(ctx context.Context) error {
 	if err := os.RemoveAll(p.TempDir); err != nil {
 		return fmt.Errorf("failed to remove temporary directory %s: %w", p.TempDir, err)
 	}
 	return nil
 }
 
-func (p *iCloudPhotoImporter) Root() string {
-	return "/"
+func (p *iCloudPhotoImporter) Root(ctx context.Context) (string, error) {
+	return "/", nil
 }
 
-func (p *iCloudPhotoImporter) Origin() string {
-	return "nil"
+func (p *iCloudPhotoImporter) Origin(ctx context.Context) (string, error) {
+	return "nil", nil
 }
 
-func (p *iCloudPhotoImporter) Type() string {
-	return "iphoto"
+func (p *iCloudPhotoImporter) Type(ctx context.Context) (string, error) {
+	return "iphoto", nil
 }
 
 func main() {
