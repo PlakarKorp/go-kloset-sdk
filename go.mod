@@ -4,7 +4,7 @@ go 1.23.3
 
 require (
 	github.com/PlakarKorp/kloset v1.0.1-beta.3
-	github.com/PlakarKorp/plakar v1.0.3-devel.c7a66f1.0.20250731091058-2b82e99c26c5
+	github.com/PlakarKorp/plakar v1.0.3-devel.d5a3fd0
 	github.com/pkg/xattr v0.4.12
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
