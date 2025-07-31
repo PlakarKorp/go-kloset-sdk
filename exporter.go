@@ -46,17 +46,23 @@ func (plugin *exporterPluginServer) Init(ctx context.Context, req *grpc_exporter
 
 // Root returns the root filesystem path where the exporter writes files.
 func (plugin *exporterPluginServer) Root(ctx context.Context, req *grpc_exporter.RootRequest) (*grpc_exporter.RootResponse, error) {
+	loc, err := plugin.exporter.Root(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &grpc_exporter.RootResponse{
-		RootPath: plugin.exporter.Root(),
-	}, nil
+		RootPath: loc,
+	}, err
 }
 
 // CreateDirectory creates a new directory at the given pathname.
 func (plugin *exporterPluginServer) CreateDirectory(ctx context.Context, req *grpc_exporter.CreateDirectoryRequest) (*grpc_exporter.CreateDirectoryResponse, error) {
-	err := plugin.exporter.CreateDirectory(req.Pathname)
+	err := plugin.exporter.CreateDirectory(ctx, req.Pathname)
 	if err != nil {
 		return nil, err
 	}
+
 	return &grpc_exporter.CreateDirectoryResponse{}, nil
 }
 
@@ -100,7 +106,7 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 		}
 	}
 
-	if err := plugin.exporter.StoreFile(pathname, &buf, size); err != nil {
+	if err := plugin.exporter.StoreFile(stream.Context(), pathname, &buf, size); err != nil {
 		return err
 	}
 
@@ -110,7 +116,7 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 // SetPermissions updates the file system metadata for a given path,
 // including mode, ownership and timestamps.
 func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grpc_exporter.SetPermissionsRequest) (*grpc_exporter.SetPermissionsResponse, error) {
-	err := plugin.exporter.SetPermissions(req.Pathname, &objects.FileInfo{
+	err := plugin.exporter.SetPermissions(ctx, req.Pathname, &objects.FileInfo{
 		Lname:      req.FileInfo.Name,
 		Lsize:      req.FileInfo.Size,
 		Lmode:      fs.FileMode(req.FileInfo.Mode),
@@ -132,10 +138,11 @@ func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grp
 
 // Close finalizes the exporter, ensuring that all data is flushed and resources are released.
 func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporter.CloseRequest) (*grpc_exporter.CloseResponse, error) {
-	err := plugin.exporter.Close()
+	err := plugin.exporter.Close(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	return &grpc_exporter.CloseResponse{}, nil
 }
 

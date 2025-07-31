@@ -32,7 +32,6 @@ import (
 )
 
 type FSImporter struct {
-	ctx     context.Context
 	opts    *importer.Options
 	rootDir string
 
@@ -52,7 +51,6 @@ func NewFSImporter(appCtx context.Context, opts *importer.Options, name string, 
 	rootDir = path.Clean(rootDir)
 
 	return &FSImporter{
-		ctx:       appCtx,
 		opts:      opts,
 		rootDir:   rootDir,
 		uidToName: make(map[uint64]string),
@@ -60,31 +58,31 @@ func NewFSImporter(appCtx context.Context, opts *importer.Options, name string, 
 	}, nil
 }
 
-func (p *FSImporter) Origin() string {
-	return p.opts.Hostname
+func (p *FSImporter) Origin(ctx context.Context) (string, error) {
+	return p.opts.Hostname, nil
 }
 
-func (p *FSImporter) Type() string {
-	return "fs"
+func (p *FSImporter) Type(ctx context.Context) (string, error) {
+	return "fs", nil
 }
 
-func (p *FSImporter) Scan() (<-chan *importer.ScanResult, error) {
+func (p *FSImporter) Scan(ctx context.Context) (<-chan *importer.ScanResult, error) {
 	realp, err := p.realpathFollow(p.rootDir)
 	if err != nil {
 		return nil, err
 	}
 
 	results := make(chan *importer.ScanResult, 1000)
-	go p.walkDir_walker(results, p.rootDir, realp, 256)
+	go p.walkDir_walker(ctx, results, p.rootDir, realp, 256)
 	return results, nil
 }
 
-func (f *FSImporter) walkDir_walker(results chan<- *importer.ScanResult, rootDir, realp string, numWorkers int) {
+func (f *FSImporter) walkDir_walker(ctx context.Context, results chan<- *importer.ScanResult, rootDir, realp string, numWorkers int) {
 	jobs := make(chan string, 1000) // Buffered channel to feed paths to workers
 	var wg sync.WaitGroup
 	for range numWorkers {
 		wg.Add(1)
-		go f.WalkDirWorker(jobs, results, &wg)
+		go f.WalkDirWorker(ctx, jobs, results, &wg)
 	}
 
 	// Add prefix directories first
@@ -95,7 +93,7 @@ func (f *FSImporter) walkDir_walker(results chan<- *importer.ScanResult, rootDir
 	}
 
 	err := filepath.WalkDir(realp, func(path string, d fs.DirEntry, err error) error {
-		if f.ctx.Err() != nil {
+		if ctx.Err() != nil {
 			return err
 		}
 
@@ -171,12 +169,12 @@ func (f *FSImporter) realpathFollow(path string) (resolved string, err error) {
 	return path, nil
 }
 
-func (p *FSImporter) Close() error {
+func (p *FSImporter) Close(ctx context.Context) error {
 	return nil
 }
 
-func (p *FSImporter) Root() string {
-	return p.rootDir
+func (p *FSImporter) Root(ctx context.Context) (string, error) {
+	return p.rootDir, nil
 }
 
 func main() {

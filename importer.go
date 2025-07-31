@@ -52,16 +52,31 @@ func (plugin *importerPluginServer) Init(ctx context.Context, req *grpc_importer
 
 // Info returns metadata about the importer like type, origin, and root.
 func (plugin *importerPluginServer) Info(ctx context.Context, req *grpc_importer.InfoRequest) (*grpc_importer.InfoResponse, error) {
+	typ, err := plugin.importer.Type(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	orig, err := plugin.importer.Origin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	root, err := plugin.importer.Root(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &grpc_importer.InfoResponse{
-		Type:   plugin.importer.Type(),
-		Origin: plugin.importer.Origin(),
-		Root:   plugin.importer.Root(),
+		Type:   typ,
+		Origin: orig,
+		Root:   root,
 	}, nil
 }
 
 // Scan scans for records using the importer and streams them back.
 func (plugin *importerPluginServer) Scan(req *grpc_importer.ScanRequest, stream grpc_importer.Importer_ScanServer) error {
-	scanResults, err := plugin.importer.Scan()
+	scanResults, err := plugin.importer.Scan(stream.Context())
 	if err != nil {
 		return err
 	}
@@ -190,7 +205,7 @@ func (plugin *importerPluginServer) Close(ctx context.Context, req *grpc_importe
 	}
 	plugin.holdingReaders = make(map[string]io.ReadCloser)
 
-	if err := plugin.importer.Close(); err != nil {
+	if err := plugin.importer.Close(ctx); err != nil {
 		return nil, err
 	}
 	return &grpc_importer.CloseResponse{}, nil
