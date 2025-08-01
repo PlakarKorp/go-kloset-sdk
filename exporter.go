@@ -136,6 +136,15 @@ func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grp
 	return &grpc_exporter.SetPermissionsResponse{}, nil
 }
 
+func (plugin *exporterPluginServer) CreateLink(ctx context.Context, req *grpc_exporter.CreateLinkRequest) (*grpc_exporter.CreateLinkResponse, error) {
+	err := plugin.exporter.CreateLink(ctx, req.Oldname, req.Oldname, plakar_exporter.LinkType(req.Ltype))
+	if err != nil {
+		return nil, err
+	}
+
+	return &grpc_exporter.CreateLinkResponse{}, nil
+}
+
 // Close finalizes the exporter, ensuring that all data is flushed and resources are released.
 func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporter.CloseRequest) (*grpc_exporter.CloseResponse, error) {
 	err := plugin.exporter.Close(ctx)

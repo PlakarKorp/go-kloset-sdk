@@ -3,8 +3,8 @@ module github.com/PlakarKorp/go-kloset-sdk
 go 1.23.3
 
 require (
-	github.com/PlakarKorp/kloset v1.0.1-beta.3
-	github.com/PlakarKorp/plakar v1.0.3-devel.d5a3fd0
+	github.com/PlakarKorp/kloset v1.0.1-beta.4
+	github.com/PlakarKorp/plakar v1.0.3-devel.dc37b62
 	github.com/pkg/xattr v0.4.12
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
@@ -24,7 +24,7 @@ require (
 	github.com/cockroachdb/swiss v0.0.0-20250624142022-d6e517c1d961 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20250429170803-42689b6311bb // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/getsentry/sentry-go v0.34.1 // indirect
+	github.com/getsentry/sentry-go v0.35.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
