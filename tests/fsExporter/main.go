@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -53,6 +54,10 @@ func (p *FSExporter) SetPermissions(ctx context.Context, pathname string, filein
 		}
 	}
 	return nil
+}
+
+func (p *FSExporter) CreateLink(ctx context.Context, oldname string, newname string, ltype exporter.LinkType) error {
+	return errors.ErrUnsupported
 }
 
 func (p *FSExporter) Close(ctx context.Context) error {
