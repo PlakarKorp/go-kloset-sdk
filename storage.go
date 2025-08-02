@@ -3,12 +3,13 @@ package sdk
 import (
 	"context"
 	"fmt"
+
 	"github.com/PlakarKorp/kloset/kcontext"
 	"github.com/PlakarKorp/kloset/objects"
 
-	plakar_storage "github.com/PlakarKorp/kloset/storage"
-	plakar_grpc_storage "github.com/PlakarKorp/plakar/connectors/grpc/storage"
-	grpc_storage "github.com/PlakarKorp/plakar/connectors/grpc/storage/pkg"
+	kloset_grpc_storage "github.com/PlakarKorp/integration-grpc/storage"
+	grpc_storage "github.com/PlakarKorp/integration-grpc/storage/pkg"
+	kloset_storage "github.com/PlakarKorp/kloset/storage"
 
 	"google.golang.org/grpc"
 )
@@ -17,10 +18,10 @@ import (
 // It exposes a Store interface over gRPC for remote use.
 type storagePluginServer struct {
 	// constructor creates a new storage backend.
-	constructor plakar_storage.StoreFn
+	constructor kloset_storage.StoreFn
 
 	// storage is the active storage backend.
-	storage plakar_storage.Store
+	storage kloset_storage.Store
 
 	grpc_storage.UnimplementedStoreServer
 }
@@ -130,7 +131,7 @@ func (plugin *storagePluginServer) PutState(stream grpc_storage.Store_PutStateSe
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutState(stream.Context(), mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutState(stream.Context(), mac, kloset_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -155,7 +156,7 @@ func (plugin *storagePluginServer) GetState(req *grpc_storage.GetStateRequest, s
 		return err
 	}
 
-	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+	_, err = kloset_grpc_storage.SendChunks(r, func(chunk []byte) error {
 		return stream.Send(&grpc_storage.GetStateResponse{
 			Chunk: chunk,
 		})
@@ -202,7 +203,7 @@ func (plugin *storagePluginServer) PutPackfile(stream grpc_storage.Store_PutPack
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutPackfile(stream.Context(), mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutPackfile(stream.Context(), mac, kloset_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -227,7 +228,7 @@ func (plugin *storagePluginServer) GetPackfile(req *grpc_storage.GetPackfileRequ
 		return err
 	}
 
-	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+	_, err = kloset_grpc_storage.SendChunks(r, func(chunk []byte) error {
 		return stream.Send(&grpc_storage.GetPackfileResponse{
 			Chunk: chunk,
 		})
@@ -245,7 +246,7 @@ func (plugin *storagePluginServer) GetPackfileBlob(req *grpc_storage.GetPackfile
 		return err
 	}
 
-	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+	_, err = kloset_grpc_storage.SendChunks(r, func(chunk []byte) error {
 		return stream.Send(&grpc_storage.GetPackfileBlobResponse{
 			Chunk: chunk,
 		})
@@ -292,7 +293,7 @@ func (plugin *storagePluginServer) PutLock(stream grpc_storage.Store_PutLockServ
 	}
 	mac := objects.MAC(req.Mac.Value)
 
-	size, err := plugin.storage.PutLock(stream.Context(), mac, plakar_grpc_storage.ReceiveChunks(func() ([]byte, error) {
+	size, err := plugin.storage.PutLock(stream.Context(), mac, kloset_grpc_storage.ReceiveChunks(func() ([]byte, error) {
 		req, err := stream.Recv()
 		if err != nil {
 			return nil, err
@@ -317,7 +318,7 @@ func (plugin *storagePluginServer) GetLock(req *grpc_storage.GetLockRequest, str
 		return err
 	}
 
-	_, err = plakar_grpc_storage.SendChunks(r, func(chunk []byte) error {
+	_, err = kloset_grpc_storage.SendChunks(r, func(chunk []byte) error {
 		return stream.Send(&grpc_storage.GetLockResponse{
 			Chunk: chunk,
 		})
@@ -336,7 +337,7 @@ func (plugin *storagePluginServer) DeleteLock(ctx context.Context, req *grpc_sto
 }
 
 // RunStorage starts the gRPC server for the storage plugin.
-func RunStorage(constructor plakar_storage.StoreFn) error {
+func RunStorage(constructor kloset_storage.StoreFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)

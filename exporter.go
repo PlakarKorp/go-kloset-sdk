@@ -7,9 +7,9 @@ import (
 	"io"
 	"io/fs"
 
+	grpc_exporter "github.com/PlakarKorp/integration-grpc/exporter/pkg"
 	"github.com/PlakarKorp/kloset/objects"
-	plakar_exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
-	grpc_exporter "github.com/PlakarKorp/plakar/connectors/grpc/exporter/pkg"
+	kloset_exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
 	"google.golang.org/grpc"
 )
 
@@ -17,10 +17,10 @@ import (
 // It wraps a Plakar exporter and handles incoming RPCs for exporting snapshot data.
 type exporterPluginServer struct {
 	// constructor is the factory function used to create a new exporter instance.
-	constructor plakar_exporter.ExporterFn
+	constructor kloset_exporter.ExporterFn
 
 	// exporter is the underlying Plakar exporter implementation.
-	exporter plakar_exporter.Exporter
+	exporter kloset_exporter.Exporter
 
 	// UnimplementedExporterServer must be embedded for forward compatibility.
 	grpc_exporter.UnimplementedExporterServer
@@ -30,7 +30,7 @@ type exporterPluginServer struct {
 //
 // It must be called first. It uses the constructor to create the concrete exporter.
 func (plugin *exporterPluginServer) Init(ctx context.Context, req *grpc_exporter.InitRequest) (*grpc_exporter.InitResponse, error) {
-	opts := plakar_exporter.Options{
+	opts := kloset_exporter.Options{
 		MaxConcurrency: uint64(req.Options.Maxconcurrency),
 		// TODO: Add stdin/stdout/stderr support if needed.
 	}
@@ -137,7 +137,7 @@ func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grp
 }
 
 func (plugin *exporterPluginServer) CreateLink(ctx context.Context, req *grpc_exporter.CreateLinkRequest) (*grpc_exporter.CreateLinkResponse, error) {
-	err := plugin.exporter.CreateLink(ctx, req.Oldname, req.Oldname, plakar_exporter.LinkType(req.Ltype))
+	err := plugin.exporter.CreateLink(ctx, req.Oldname, req.Oldname, kloset_exporter.LinkType(req.Ltype))
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporte
 // RunExporter launches the gRPC server for an exporter plugin.
 //
 // The given constructor will be used to initialize the exporter instance.
-func RunExporter(constructor plakar_exporter.ExporterFn) error {
+func RunExporter(constructor kloset_exporter.ExporterFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)

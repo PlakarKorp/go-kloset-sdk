@@ -3,13 +3,14 @@ package sdk
 import (
 	"context"
 	"fmt"
-	kloset_importer "github.com/PlakarKorp/kloset/snapshot/importer"
-	grpc_importer "github.com/PlakarKorp/plakar/connectors/grpc/importer/pkg"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"os"
 	"sync"
+
+	grpc_importer "github.com/PlakarKorp/integration-grpc/importer/pkg"
+	kloset_importer "github.com/PlakarKorp/kloset/snapshot/importer"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // importerPluginServer implements the gRPC server for a Plakar importer plugin.
