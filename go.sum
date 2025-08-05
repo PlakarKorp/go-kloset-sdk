@@ -6,8 +6,8 @@ github.com/PlakarKorp/go-cdc-chunkers v1.0.1 h1:7yNCCMxfZwVcZJ7O4TTCROm/pKTlZv5v
 github.com/PlakarKorp/go-cdc-chunkers v1.0.1/go.mod h1:y7ag92JABKPBDoSOPwedssQ5NIOgjRm4Mu6yTBpmUMY=
 github.com/PlakarKorp/integration-grpc v1.0.0 h1:8t8iB1ir7raj1CRN7NIzY8qzLEFibcj3HwIVKnQwHpQ=
 github.com/PlakarKorp/integration-grpc v1.0.0/go.mod h1:vIW2eX96Qt4OvrYSVc+yuXVhkSl2nwGWseGcq4/N3q8=
-github.com/PlakarKorp/kloset v1.0.1-beta.4 h1:DRTdtUk5LUqq/B3YGKs8aqp9Bw0QRoO8BtAAIwalhiE=
-github.com/PlakarKorp/kloset v1.0.1-beta.4/go.mod h1:iuSvXRXzYm2+qWAEvZcqrYrMNc4QZ7tWixJcry6ovZ4=
+github.com/PlakarKorp/kloset v1.0.1-beta.5 h1:741cn3tmv9OKnqwKyjfqQs8SFvtZ8oOVlkNKycpVRzo=
+github.com/PlakarKorp/kloset v1.0.1-beta.5/go.mod h1:iuSvXRXzYm2+qWAEvZcqrYrMNc4QZ7tWixJcry6ovZ4=
 github.com/aclements/go-perfevent v0.0.0-20240301234650-f7843625020f h1:JjxwchlOepwsUWcQwD2mLUAGE9aCp0/ehy6yCHFBOvo=
 github.com/aclements/go-perfevent v0.0.0-20240301234650-f7843625020f/go.mod h1:tMDTce/yLLN/SK8gMOxQfnyeMeCg8KGzp0D1cbECEeo=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=

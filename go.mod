@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/PlakarKorp/integration-grpc v1.0.0
-	github.com/PlakarKorp/kloset v1.0.1-beta.4
+	github.com/PlakarKorp/kloset v1.0.1-beta.5
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 )
