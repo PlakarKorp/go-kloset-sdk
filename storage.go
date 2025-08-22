@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/PlakarKorp/kloset/kcontext"
-	"github.com/PlakarKorp/kloset/objects"
+	"github.com/PlakarKorp/go-kloset-contracts/objects"
 
+	kloset_storage "github.com/PlakarKorp/go-kloset-contracts/storage"
 	kloset_grpc_storage "github.com/PlakarKorp/integration-grpc/storage"
 	grpc_storage "github.com/PlakarKorp/integration-grpc/storage/pkg"
-	kloset_storage "github.com/PlakarKorp/kloset/storage"
 
 	"google.golang.org/grpc"
 )
@@ -39,7 +38,7 @@ func (plugin *storagePluginServer) Init(ctx context.Context, req *grpc_storage.I
 
 // Create creates a new storage with given configuration.
 func (plugin *storagePluginServer) Create(ctx context.Context, req *grpc_storage.CreateRequest) (*grpc_storage.CreateResponse, error) {
-	err := plugin.storage.Create(kcontext.NewKContext(), req.Config)
+	err := plugin.storage.Create(ctx, req.Config)
 	if err != nil {
 		return nil, err
 	}

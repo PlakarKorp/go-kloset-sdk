@@ -7,8 +7,8 @@ import (
 	"os"
 	"sync"
 
+	kloset_importer "github.com/PlakarKorp/go-kloset-contracts/importer"
 	grpc_importer "github.com/PlakarKorp/integration-grpc/importer/pkg"
-	kloset_importer "github.com/PlakarKorp/kloset/snapshot/importer"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
