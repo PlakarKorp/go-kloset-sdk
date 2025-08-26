@@ -1,8 +1,6 @@
 package sdk
 
 import (
-	"os"
-	"fmt"
 	"net"
 )
 
@@ -31,14 +29,10 @@ func (l *singleConnListener) Addr() net.Addr {
 	return l.conn.LocalAddr()
 }
 
-// InitConn initializes the gRPC socket connection from stdin.
+// InitConn initializes the gRPC socket connection from stdio.
 // It returns the net.Conn and a Listener wrapping it.
 func InitConn() (net.Conn, net.Listener, error) {
-	conn, err := net.FileConn(os.Stdin)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to convert stdin to net.Conn: %w", err)
-	}
-
+	conn := NewStdioConn()
 	listener := &singleConnListener{conn: conn}
 	return conn, listener, nil
 }
