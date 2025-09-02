@@ -77,7 +77,18 @@ func (plugin *importerPluginServer) Info(ctx context.Context, req *grpc_importer
 
 // Scan scans for records using the importer and streams them back.
 func (plugin *importerPluginServer) Scan(req *grpc_importer.ScanRequest, stream grpc_importer.Importer_ScanServer) error {
-	scanResults, err := plugin.importer.Scan(stream.Context())
+	// XXX	/!\ attention required /!\
+	//
+	// we don't use the request context here because we need a one
+	// that will outlive the request.  The plakar side is going to
+	// consume this list and then, asynchronously, try to open the
+	// files.  The plugin (hello s3) could attempt to use the same
+	// context down there as well, resulting in a funny cascade of
+	// "context cancelled" failures during the backup.
+	//
+	// The cancellation is handled by killing this process or by
+	// closing stdin/stdout.
+	scanResults, err := plugin.importer.Scan(context.Background())
 	if err != nil {
 		return err
 	}
