@@ -1,19 +1,23 @@
 package sdk
 
 import (
+	"io"
 	"net"
+	"sync"
 )
 
 // singleConnListener is a net.Listener that accepts only one connection.
 type singleConnListener struct {
-	conn net.Conn
-	used bool
+	notify <-chan struct{}
+	conn   net.Conn
+	used   bool
 }
 
 // Accept returns the connection once, then blocks forever.
 func (l *singleConnListener) Accept() (net.Conn, error) {
 	if l.used {
-		<-make(chan struct{}) // Block forever.
+		<-l.notify
+		return nil, io.ErrClosedPipe
 	}
 	l.used = true
 	return l.conn, nil
@@ -33,6 +37,18 @@ func (l *singleConnListener) Addr() net.Addr {
 // It returns the net.Conn and a Listener wrapping it.
 func InitConn() (net.Conn, net.Listener, error) {
 	conn := NewStdioConn()
-	listener := &singleConnListener{conn: conn}
+
+	ch := make(chan struct{})
+	var mtx sync.Mutex
+	conn.onclose = func() {
+		mtx.Lock()
+		if ch != nil {
+			close(ch)
+			ch = nil
+		}
+		mtx.Unlock()
+	}
+
+	listener := &singleConnListener{notify: ch, conn: conn}
 	return conn, listener, nil
 }

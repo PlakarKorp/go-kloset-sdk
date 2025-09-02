@@ -9,16 +9,22 @@ import (
 type StdioConn struct {
 	stdin  *os.File
 	stdout *os.File
+
+	onclose func()
 }
 
-func NewStdioConn() net.Conn {
-	return &StdioConn{os.Stdin, os.Stdout}
+func NewStdioConn() *StdioConn {
+	return &StdioConn{os.Stdin, os.Stdout, nil}
 }
 
 func (c *StdioConn) Read(b []byte) (int, error)  { return c.stdin.Read(b) }
 func (c *StdioConn) Write(b []byte) (int, error) { return c.stdout.Write(b) }
 
 func (c *StdioConn) Close() (ret error) {
+	if c.onclose != nil {
+		c.onclose()
+	}
+
 	if err := c.stdin.Close(); err != nil {
 		ret = err
 	}
