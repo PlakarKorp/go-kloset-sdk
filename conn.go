@@ -17,7 +17,7 @@ type singleConnListener struct {
 func (l *singleConnListener) Accept() (net.Conn, error) {
 	if l.used {
 		<-l.notify
-		return nil, io.ErrClosedPipe
+		return nil, io.EOF
 	}
 	l.used = true
 	return l.conn, nil

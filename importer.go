@@ -174,7 +174,7 @@ func (plugin *importerPluginServer) OpenReader(req *grpc_importer.OpenReaderRequ
 		return fmt.Errorf("no reader for pathname %s", pathname)
 	}
 
-	buf := make([]byte, 16*1024)
+	buf := make([]byte, 1024*1024)
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
