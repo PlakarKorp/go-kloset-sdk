@@ -4,8 +4,8 @@ github.com/NickBall/go-aes-key-wrap v0.0.0-20170929221519-1c3aa3e4dfc5 h1:5BIUS5
 github.com/NickBall/go-aes-key-wrap v0.0.0-20170929221519-1c3aa3e4dfc5/go.mod h1:w5D10RxC0NmPYxmQ438CC1S07zaC1zpvuNW7s5sUk2Q=
 github.com/PlakarKorp/go-cdc-chunkers v1.0.2 h1:sBWPtDQiezaTjPqF5skLbdjoo8RgiIuseGaFNQnmoOs=
 github.com/PlakarKorp/go-cdc-chunkers v1.0.2/go.mod h1:y7ag92JABKPBDoSOPwedssQ5NIOgjRm4Mu6yTBpmUMY=
-github.com/PlakarKorp/integration-grpc v1.0.9 h1:iEUWo3fFZjEuI2VoH930IMwGW7VKQ+BGk59e3ywVEGg=
-github.com/PlakarKorp/integration-grpc v1.0.9/go.mod h1:A/BMPnATvo86729D5ujJRXJSejWaKS8OHWE72S2c2vo=
+github.com/PlakarKorp/integration-grpc v1.0.10 h1:vXj7vCg3upoBkyApcyGtfIC0me6jugYQPT0jRcUgjo4=
+github.com/PlakarKorp/integration-grpc v1.0.10/go.mod h1:f4gmiRhwur7mrTNaJAyeJrshNOhf5nDrfeZxdiOwv9w=
 github.com/PlakarKorp/kloset v1.0.3 h1:fpwpmL0XdYThY9eT88D8a5E4OkA6de2CCDquTR/LVhI=
 github.com/PlakarKorp/kloset v1.0.3/go.mod h1:/IopLH08yaBsNW73qMuu2QUm4pGpscYATSS+xd/X2GY=
 github.com/aclements/go-perfevent v0.0.0-20240301234650-f7843625020f h1:JjxwchlOepwsUWcQwD2mLUAGE9aCp0/ehy6yCHFBOvo=
