@@ -3,8 +3,8 @@ module github.com/PlakarKorp/go-kloset-sdk
 go 1.24.0
 
 require (
-	github.com/PlakarKorp/integration-grpc v1.0.14
-	github.com/PlakarKorp/kloset v1.0.5
+	github.com/PlakarKorp/integration-grpc v1.0.15
+	github.com/PlakarKorp/kloset v1.0.7
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.8
 )
