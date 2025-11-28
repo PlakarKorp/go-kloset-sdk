@@ -1,8 +1,8 @@
 package sdk
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -69,8 +69,6 @@ func (plugin *exporterPluginServer) CreateDirectory(ctx context.Context, req *gr
 // StoreFile receives file data in streamed chunks and writes it to the exporter.
 // The first request must contain a Header with pathname and size.
 func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_StoreFileServer) error {
-	var buf bytes.Buffer
-
 	req, err := stream.Recv()
 	if err == io.EOF {
 		return fmt.Errorf("no requests received")
@@ -90,24 +88,45 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 		return fmt.Errorf("invalid pathname or size: pathname=%s, size=%d", pathname, size)
 	}
 
-	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
+	pr, pw := io.Pipe()
 
-		if req.GetData() != nil && len(req.GetData().Chunk) > 0 {
-			if _, err := buf.Write(req.GetData().Chunk); err != nil {
-				return err
+	outErrCh := make(chan error, 1)
+	var totalLen int64
+
+	go func() {
+		defer pw.Close()
+		defer close(outErrCh)
+
+		for {
+			req, err := stream.Recv()
+			if err != nil {
+				outErrCh <- err
+				return
+			}
+
+			if req.GetData() != nil && len(req.GetData().Chunk) > 0 {
+				if _, err := pw.Write(req.GetData().Chunk); err != nil {
+					outErrCh <- err
+					return
+				}
+
+				totalLen += int64(len(req.GetData().Chunk))
 			}
 		}
+	}()
+
+	storeErr := plugin.exporter.StoreFile(stream.Context(), pathname, pr, size)
+	if storeErr != nil {
+		pr.CloseWithError(storeErr)
 	}
 
-	if err := plugin.exporter.StoreFile(stream.Context(), pathname, &buf, size); err != nil {
+	err = <-outErrCh
+	if err != nil && !errors.Is(err, io.EOF) {
 		return err
+	}
+
+	if totalLen != size {
+		return fmt.Errorf("size mismatch expected %d actually wrote %d", size, totalLen)
 	}
 
 	return stream.SendAndClose(&grpc_exporter.StoreFileResponse{})
