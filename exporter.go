@@ -86,7 +86,7 @@ func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_Stor
 	pathname := req.GetHeader().Pathname
 	size := int64(req.GetHeader().Size)
 
-	if pathname == "" || size <= 0 {
+	if pathname == "" || size < 0 {
 		return fmt.Errorf("invalid pathname or size: pathname=%s, size=%d", pathname, size)
 	}
 
