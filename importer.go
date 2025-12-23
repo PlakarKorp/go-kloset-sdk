@@ -167,8 +167,8 @@ func (plugin *importerPluginServer) OpenReader(req *grpc_importer.OpenReaderRequ
 	pathname := req.Pathname
 
 	plugin.mu.Lock()
-	defer plugin.mu.Unlock()
 	reader, ok := plugin.holdingReaders[pathname]
+	plugin.mu.Unlock()
 
 	if !ok {
 		return fmt.Errorf("no reader for pathname %s", pathname)
