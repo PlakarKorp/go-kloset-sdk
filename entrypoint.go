@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
-	importer "github.com/PlakarKorp/kloset/snapshot/importer"
+	exporter "github.com/PlakarKorp/kloset/connectors/exporter"
+	importer "github.com/PlakarKorp/kloset/connectors/importer"
 	storage "github.com/PlakarKorp/kloset/storage"
 )
 
