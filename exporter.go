@@ -1,38 +1,37 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 
-	grpc_exporter "github.com/PlakarKorp/integration-grpc/exporter/pkg"
-	"github.com/PlakarKorp/kloset/objects"
-	kloset_exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
+	gconn "github.com/PlakarKorp/integration-grpc/v2"
+	gexporter "github.com/PlakarKorp/integration-grpc/v2/exporter"
+	"github.com/PlakarKorp/kloset/connectors"
+	"github.com/PlakarKorp/kloset/connectors/exporter"
+	"github.com/PlakarKorp/kloset/location"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
-// exporterPluginServer implements the gRPC Exporter service.
-// It wraps a Plakar exporter and handles incoming RPCs for exporting snapshot data.
 type exporterPluginServer struct {
-	// constructor is the factory function used to create a new exporter instance.
-	constructor kloset_exporter.ExporterFn
+	constructor    exporter.ExporterFn
+	exporter       exporter.Exporter
+	maxConcurrency int
+	flags          location.Flags
 
-	// exporter is the underlying Plakar exporter implementation.
-	exporter kloset_exporter.Exporter
-
-	// UnimplementedExporterServer must be embedded for forward compatibility.
-	grpc_exporter.UnimplementedExporterServer
+	gexporter.UnimplementedExporterServer
 }
 
-// Init initializes the exporter with given options and configuration.
-//
-// It must be called first. It uses the constructor to create the concrete exporter.
-func (plugin *exporterPluginServer) Init(ctx context.Context, req *grpc_exporter.InitRequest) (*grpc_exporter.InitResponse, error) {
-	opts := kloset_exporter.Options{
-		MaxConcurrency: uint64(req.Options.Maxconcurrency),
-		// TODO: Add stdin/stdout/stderr support if needed.
+func (plugin *exporterPluginServer) Init(ctx context.Context, req *gexporter.InitRequest) (*gexporter.InitResponse, error) {
+	opts := connectors.Options{
+		MaxConcurrency:  int(req.Options.Maxconcurrency),
+		Hostname:        req.Options.Hostname,
+		OperatingSystem: req.Options.Os,
+		Architecture:    req.Options.Arch,
+		CWD:             req.Options.Cwd,
 	}
 
 	exp, err := plugin.constructor(ctx, &opts, req.Proto, req.Config)
@@ -41,143 +40,187 @@ func (plugin *exporterPluginServer) Init(ctx context.Context, req *grpc_exporter
 	}
 
 	plugin.exporter = exp
-	return &grpc_exporter.InitResponse{}, nil
+	plugin.maxConcurrency = int(req.Options.Maxconcurrency)
+	plugin.flags = exp.Flags()
+
+	return &gexporter.InitResponse{
+		Origin: exp.Origin(),
+		Type:   exp.Type(),
+		Root:   exp.Root(),
+		Flags:  uint32(plugin.flags),
+	}, nil
 }
 
-// Root returns the root filesystem path where the exporter writes files.
-func (plugin *exporterPluginServer) Root(ctx context.Context, req *grpc_exporter.RootRequest) (*grpc_exporter.RootResponse, error) {
-	loc, err := plugin.exporter.Root(ctx)
+func (plugin *exporterPluginServer) Ping(ctx context.Context, req *gexporter.PingRequest) (*gexporter.PingResponse, error) {
+	err := plugin.exporter.Ping(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &grpc_exporter.RootResponse{
-		RootPath: loc,
-	}, err
+	return &gexporter.PingResponse{}, nil
 }
 
-// CreateDirectory creates a new directory at the given pathname.
-func (plugin *exporterPluginServer) CreateDirectory(ctx context.Context, req *grpc_exporter.CreateDirectoryRequest) (*grpc_exporter.CreateDirectoryResponse, error) {
-	err := plugin.exporter.CreateDirectory(ctx, req.Pathname)
-	if err != nil {
-		return nil, err
-	}
-
-	return &grpc_exporter.CreateDirectoryResponse{}, nil
+type streamReader struct {
+	end    chan struct{}
+	eof    bool
+	stream grpc.BidiStreamingServer[gexporter.ExportRequest, gexporter.ExportResponse]
+	buf    bytes.Buffer
 }
 
-// StoreFile receives file data in streamed chunks and writes it to the exporter.
-// The first request must contain a Header with pathname and size.
-func (plugin *exporterPluginServer) StoreFile(stream grpc_exporter.Exporter_StoreFileServer) error {
-	req, err := stream.Recv()
-	if err == io.EOF {
-		return fmt.Errorf("no requests received")
+func open(stream grpc.BidiStreamingServer[gexporter.ExportRequest, gexporter.ExportResponse], end chan struct{}) io.ReadCloser {
+	return &streamReader{
+		stream: stream,
+		end:    end,
 	}
-	if err != nil {
-		return err
-	}
+}
 
-	if req.GetHeader() == nil {
-		return fmt.Errorf("first request must be of type Header, got %v", req.Type)
-	}
-
-	pathname := req.GetHeader().Pathname
-	size := int64(req.GetHeader().Size)
-
-	if pathname == "" || size < 0 {
-		return fmt.Errorf("invalid pathname or size: pathname=%s, size=%d", pathname, size)
-	}
-
-	pr, pw := io.Pipe()
-
-	outErrCh := make(chan error, 1)
-	var totalLen int64
-
-	go func() {
-		defer pw.Close()
-		defer close(outErrCh)
-
-		for {
-			req, err := stream.Recv()
-			if err != nil {
-				outErrCh <- err
-				return
-			}
-
-			if req.GetData() != nil && len(req.GetData().Chunk) > 0 {
-				if _, err := pw.Write(req.GetData().Chunk); err != nil {
-					outErrCh <- err
-					return
-				}
-
-				totalLen += int64(len(req.GetData().Chunk))
-			}
+func (s *streamReader) Read(p []byte) (n int, err error) {
+	if s.buf.Len() != 0 {
+		n, err = s.buf.Read(p)
+		if n > 0 || err != nil {
+			return n, err
 		}
-	}()
-
-	storeErr := plugin.exporter.StoreFile(stream.Context(), pathname, pr, size)
-	if storeErr != nil {
-		pr.CloseWithError(storeErr)
 	}
 
-	err = <-outErrCh
-	if err != nil && !errors.Is(err, io.EOF) {
+	fileResponse, err := s.stream.Recv()
+	if err != nil {
+		if err == io.EOF {
+			return 0, io.ErrUnexpectedEOF
+		}
+		return 0, fmt.Errorf("failed to receive file data: %w", err)
+	}
+
+	if chunk := fileResponse.GetChunk(); chunk != nil {
+		if len(chunk) == 0 {
+			s.eof = true
+		}
+
+		s.buf.Write(chunk)
+		n, err = s.buf.Read(p)
+		if n > 0 || err != nil {
+			return n, err
+		}
+	}
+	return 0, fmt.Errorf("unexpected response: %v", fileResponse)
+}
+
+// We still drain this in order to avoid a misuse of the API (where someone
+// would request less than what the server is sending), which leads to hangs.
+func (s *streamReader) Close() error {
+	defer close(s.end)
+
+	for !s.eof {
+		res, err := s.stream.Recv()
+		if errors.Is(err, io.EOF) {
+			return io.ErrUnexpectedEOF
+		} else if err != nil {
+			return err
+		}
+
+		if chunk := res.GetChunk(); chunk != nil {
+			if len(chunk) == 0 {
+				break
+			}
+		} else {
+			return fmt.Errorf("unexpected response: %v", res)
+		}
+	}
+	return nil
+}
+
+func (plugin *exporterPluginServer) receiveRecords(stream grpc.BidiStreamingServer[gexporter.ExportRequest, gexporter.ExportResponse], records chan<- *connectors.Record) error {
+	defer close(records)
+
+	for {
+		res, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				err = nil
+			}
+			return err
+		}
+
+		r := res.GetRecord()
+		if r == nil {
+			return fmt.Errorf("bad type; expected a record, got %t", res.Packet)
+		}
+
+		record, err := gconn.RecordFromProto(r)
+		if err != nil {
+			return err
+		}
+
+		var (
+			rd  io.ReadCloser
+			end chan struct{}
+		)
+
+		if r.HasReader {
+			end = make(chan struct{})
+			rd = open(stream, end)
+
+			record.Reader = rd
+		}
+
+		records <- record
+		if end != nil {
+			<-end
+		}
+	}
+}
+
+func (plugin *exporterPluginServer) transmitResults(stream grpc.BidiStreamingServer[gexporter.ExportRequest, gexporter.ExportResponse], results <-chan *connectors.Result) error {
+	for result := range results {
+		hdr := gexporter.ExportResponse{
+			Result: gconn.ResultToProto(result),
+		}
+		if err := stream.Send(&hdr); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (plugin *exporterPluginServer) Export(stream grpc.BidiStreamingServer[gexporter.ExportRequest, gexporter.ExportResponse]) error {
+	var (
+		size    = plugin.maxConcurrency
+		records = make(chan *connectors.Record, size)
+		results = make(chan *connectors.Result, size)
+		wg      = errgroup.Group{}
+	)
+
+	ctx, cancel := context.WithCancel(stream.Context())
+
+	wg.Go(func() error {
+		return plugin.receiveRecords(stream, records)
+	})
+
+	wg.Go(func() error {
+		defer cancel()
+		return plugin.transmitResults(stream, results)
+	})
+
+	if err := plugin.exporter.Export(ctx, records, results); err != nil {
 		return err
 	}
 
-	if totalLen != size {
-		return fmt.Errorf("size mismatch expected %d actually wrote %d", size, totalLen)
-	}
-
-	return stream.SendAndClose(&grpc_exporter.StoreFileResponse{})
+	return wg.Wait()
 }
 
-// SetPermissions updates the file system metadata for a given path,
-// including mode, ownership and timestamps.
-func (plugin *exporterPluginServer) SetPermissions(ctx context.Context, req *grpc_exporter.SetPermissionsRequest) (*grpc_exporter.SetPermissionsResponse, error) {
-	err := plugin.exporter.SetPermissions(ctx, req.Pathname, &objects.FileInfo{
-		Lname:      req.FileInfo.Name,
-		Lsize:      req.FileInfo.Size,
-		Lmode:      fs.FileMode(req.FileInfo.Mode),
-		LmodTime:   req.FileInfo.ModTime.AsTime(),
-		Ldev:       req.FileInfo.Dev,
-		Lino:       req.FileInfo.Ino,
-		Luid:       req.FileInfo.Uid,
-		Lgid:       req.FileInfo.Gid,
-		Lnlink:     uint16(req.FileInfo.Nlink),
-		Lusername:  req.FileInfo.Username,
-		Lgroupname: req.FileInfo.Groupname,
-		Flags:      req.FileInfo.Flags,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &grpc_exporter.SetPermissionsResponse{}, nil
-}
-
-func (plugin *exporterPluginServer) CreateLink(ctx context.Context, req *grpc_exporter.CreateLinkRequest) (*grpc_exporter.CreateLinkResponse, error) {
-	err := plugin.exporter.CreateLink(ctx, req.Oldname, req.Oldname, kloset_exporter.LinkType(req.Ltype))
-	if err != nil {
-		return nil, err
-	}
-
-	return &grpc_exporter.CreateLinkResponse{}, nil
-}
-
-// Close finalizes the exporter, ensuring that all data is flushed and resources are released.
-func (plugin *exporterPluginServer) Close(ctx context.Context, req *grpc_exporter.CloseRequest) (*grpc_exporter.CloseResponse, error) {
+func (plugin *exporterPluginServer) Close(ctx context.Context, req *gexporter.CloseRequest) (*gexporter.CloseResponse, error) {
 	err := plugin.exporter.Close(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &grpc_exporter.CloseResponse{}, nil
+	return &gexporter.CloseResponse{}, nil
 }
 
 // RunExporter launches the gRPC server for an exporter plugin.
 //
 // The given constructor will be used to initialize the exporter instance.
-func RunExporter(constructor kloset_exporter.ExporterFn) error {
+func RunExporter(constructor exporter.ExporterFn) error {
 	conn, listener, err := InitConn()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)
@@ -186,7 +229,7 @@ func RunExporter(constructor kloset_exporter.ExporterFn) error {
 
 	server := grpc.NewServer()
 
-	grpc_exporter.RegisterExporterServer(server, &exporterPluginServer{
+	gexporter.RegisterExporterServer(server, &exporterPluginServer{
 		constructor: constructor,
 	})
 

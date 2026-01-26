@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 
-	exporter "github.com/PlakarKorp/kloset/snapshot/exporter"
-	importer "github.com/PlakarKorp/kloset/snapshot/importer"
-	storage "github.com/PlakarKorp/kloset/storage"
+	exporter "github.com/PlakarKorp/kloset/connectors/exporter"
+	importer "github.com/PlakarKorp/kloset/connectors/importer"
+	storage "github.com/PlakarKorp/kloset/connectors/storage"
 )
 
 func checkArgs(args []string) {
