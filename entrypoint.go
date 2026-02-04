@@ -8,7 +8,7 @@ import (
 
 	exporter "github.com/PlakarKorp/kloset/connectors/exporter"
 	importer "github.com/PlakarKorp/kloset/connectors/importer"
-	storage "github.com/PlakarKorp/kloset/storage"
+	storage "github.com/PlakarKorp/kloset/connectors/storage"
 )
 
 func checkArgs(args []string) {
