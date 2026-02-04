@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	gconn "github.com/PlakarKorp/integration-grpc/v2"
-	gexporter "github.com/PlakarKorp/integration-grpc/v2/exporter"
+	gconn "github.com/PlakarKorp/integration-grpc"
+	gexporter "github.com/PlakarKorp/integration-grpc/exporter"
 	"github.com/PlakarKorp/kloset/connectors"
 	"github.com/PlakarKorp/kloset/connectors/exporter"
 	"github.com/PlakarKorp/kloset/location"
