@@ -6,7 +6,7 @@ import (
 
 	"github.com/PlakarKorp/kloset/objects"
 
-	gstorage "github.com/PlakarKorp/integration-grpc/v2/storage"
+	gstorage "github.com/PlakarKorp/integration-grpc/storage"
 	"github.com/PlakarKorp/kloset/connectors/storage"
 
 	"google.golang.org/grpc"
