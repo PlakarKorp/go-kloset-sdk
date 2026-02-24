@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/PlakarKorp/integration-grpc v1.1.0-beta.3
 	github.com/PlakarKorp/kloset v1.1.0-beta.1
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	golang.org/x/sync v0.19.0
 	google.golang.org/grpc v1.78.0
 )
