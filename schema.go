@@ -19,7 +19,13 @@ func ValidateConfig(schema string, config map[string]string) (map[string]any, er
 		return nil, err
 	}
 
-	return s.ValidateConfig(config)
+	obj, err := s.TransformConfig(config)
+
+	if err := s.Validate(obj); err != nil {
+		return nil, err
+	}
+
+	return obj, nil
 }
 
 func DecodeConfig(schema string, config map[string]string, dst any) error {
@@ -28,18 +34,15 @@ func DecodeConfig(schema string, config map[string]string, dst any) error {
 		return err
 	}
 
-	tc, err := s.ValidateConfig(config)
-	if err != nil {
+	obj, err := s.TransformConfig(config)
+
+	if err := s.Validate(obj); err != nil {
 		return err
 	}
 
-	applyDefaults(tc, s.raw["properties"].(map[string]any))
-	buf, err := json.Marshal(tc)
-	if err != nil {
-		return err
-	}
+	s.ApplyDefaults(obj)
 
-	return json.Unmarshal(buf, dst)
+	return s.Decode(obj, dst)
 }
 
 func NewSchemaFromString(data string) (*Schema, error) {
@@ -69,17 +72,31 @@ func NewSchemaFromString(data string) (*Schema, error) {
 	}, nil
 }
 
-func (s *Schema) ValidateConfig(config map[string]string) (map[string]any, error) {
-	tc, err := s.TransformConfig(config)
+func (schema *Schema) Validate(obj map[string]any) error {
+	return schema.schema.Validate(obj)
+}
+
+func (schema *Schema) ApplyDefaults(obj map[string]any) {
+	p, found := schema.raw["properties"]
+	if !found {
+		return
+	}
+
+	properties, ok := p.(map[string]any)
+	if !ok {
+		return
+	}
+
+	applyDefaults(obj, properties)
+}
+
+func (schema *Schema) Decode(obj map[string]any, dst any) error {
+	buf, err := json.Marshal(obj)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := s.schema.Validate(tc); err != nil {
-		return nil, err
-	}
-
-	return tc, nil
+	return json.Unmarshal(buf, dst)
 }
 
 func (schema *Schema) TransformConfig(config map[string]string) (map[string]any, error) {
