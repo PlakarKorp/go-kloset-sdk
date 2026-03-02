@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -71,7 +70,7 @@ func NewSchemaFromString(data string) (*Schema, error) {
 }
 
 func (s *Schema) ValidateConfig(config map[string]string) (map[string]any, error) {
-	tc, err := s.transformConfig(config)
+	tc, err := s.TransformConfig(config)
 	if err != nil {
 		return nil, err
 	}
@@ -83,19 +82,70 @@ func (s *Schema) ValidateConfig(config map[string]string) (map[string]any, error
 	return tc, nil
 }
 
-func (schema *Schema) transformConfig(config map[string]string) (map[string]any, error) {
+func (schema *Schema) TransformConfig(config map[string]string) (map[string]any, error) {
+	get_type_for_key := func(key string) (string, bool) {
+		obj, found := schema.raw["properties"]
+		if !found {
+			return "", false
+		}
+
+		properties, ok := obj.(map[string]any)
+		if !ok {
+			return "", false
+		}
+
+		obj, found = properties[key]
+		if !found {
+			return "", false
+		}
+
+		property, ok := obj.(map[string]any)
+		if !ok {
+			return "", false
+		}
+
+		v, found := property["type"]
+		if !found {
+			return "", false
+		}
+
+		typ, ok := v.(string)
+		return typ, ok
+	}
+
 	out := make(map[string]any, len(config))
 	for k, v := range config {
-		switch v {
-		//
-		case "true", "false":
-			b, err := strconv.ParseBool(v)
-			if err != nil {
-				return nil, fmt.Errorf("invalid %s value", k)
+		// Use the original value by default
+		out[k] = v
+
+		// If possible, parse value into the expected type as defined by the schema.
+		// In case of error, just keep the original value and let validation fail later.
+		if expectedType, found := get_type_for_key(k); found {
+			switch expectedType {
+			case "null":
+			case "boolean":
+				if b, err := strconv.ParseBool(v); err == nil {
+					out[k] = b
+				}
+			case "object":
+			case "array":
+			case "number":
+				if f, err := strconv.ParseFloat(v, 64); err == nil {
+					out[k] = f
+				}
+			case "string":
+			case "integer":
+				if strings.HasPrefix(v, "-") {
+					if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+						out[k] = i
+					}
+				} else {
+					if i, err := strconv.ParseUint(v, 10, 64); err == nil {
+						out[k] = i
+					}
+				}
+			default:
 			}
-			out[k] = b
-		default:
-			out[k] = v
 		}
 	}
 	return out, nil
