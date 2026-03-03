@@ -19,7 +19,7 @@ func ValidateConfig(schema string, config map[string]string) (map[string]any, er
 		return nil, err
 	}
 
-	obj, err := s.TransformConfig(config)
+	obj := s.TransformConfig(config)
 
 	if err := s.Validate(obj); err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func DecodeConfig(schema string, config map[string]string, dst any) error {
 		return err
 	}
 
-	obj, err := s.TransformConfig(config)
+	obj := s.TransformConfig(config)
 
 	if err := s.Validate(obj); err != nil {
 		return err
@@ -99,7 +99,7 @@ func (schema *Schema) Decode(obj map[string]any, dst any) error {
 	return json.Unmarshal(buf, dst)
 }
 
-func (schema *Schema) TransformConfig(config map[string]string) (map[string]any, error) {
+func (schema *Schema) TransformConfig(config map[string]string) map[string]any {
 	get_type_for_key := func(key string) (string, bool) {
 		obj, found := schema.raw["properties"]
 		if !found {
@@ -165,7 +165,7 @@ func (schema *Schema) TransformConfig(config map[string]string) (map[string]any,
 			}
 		}
 	}
-	return out, nil
+	return out
 }
 
 // applyDefaults recursively applies defaults from schemaProps to obj

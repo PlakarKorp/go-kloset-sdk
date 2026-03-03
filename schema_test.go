@@ -22,8 +22,7 @@ func TestSchema(t *testing.T) {
 	config, err := parseYAML(test_config)
 	require.NoError(t, err)
 
-	obj, err := schema.TransformConfig(config)
-	require.NoError(t, err)
+	obj := schema.TransformConfig(config)
 
 	err = schema.Validate(obj)
 	require.NoError(t, err)
