@@ -104,16 +104,16 @@ connectors:
 $ go build -o awesome
 
 # Create the plugin package
-$ plakar pkg create manifest.yaml v1.1.0-beta-4
-# This creates awesome-importer_v1.1.0-beta.4_linux_amd64.ptar
+$ plakar pkg create manifest.yaml v1.1.0
+# This creates awesome-importer_v1.1.0_linux_amd64.ptar
 
 # Install the plugin
-$ plakar pkg add ./awesome-importer_v1.1.0-beta.4_linux_amd64.ptar
+$ plakar pkg add ./awesome-importer_v1.1.0_linux_amd64.ptar
 
 # Verify installation
 $ plakar pkg show
 [...]
-awesome-importer@v1.1.0-beta.4
+awesome-importer@v1.1.0
 ```
 
 ### 6. Use Your Plugin
