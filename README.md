@@ -84,13 +84,17 @@ Create a manifest file describing your plugin:
 ```yaml
 # manifest.yaml
 name: awesome-importer
+display_name: Awesome Importer
 description: an awesome importer
+homepage: https://an.awesome.website
+license: ISC
+tags: [backup]
+api_version: v1
 connectors:
   - type: importer
-    executable: ./awesome
-    homepage: https://an.awesome.website
-    license: ISC
+    class: source
     protocols: [awesome]
+    executable: ./awesome
 ```
 
 ### 5. Build and Install
