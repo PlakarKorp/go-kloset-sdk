@@ -35,7 +35,7 @@ import (
 	"context"
 
 	"github.com/PlakarKorp/go-kloset-sdk"
-	"github.com/PlakarKorp/kloset/snapshot/importer"
+	"github.com/PlakarKorp/kloset/connectors/importer"
 )
 
 func NewAmazingImporter(ctx context.Context, opts *importer.Options, name string, config map[string]string) (importer.Importer, error) {
@@ -54,20 +54,20 @@ func main() {
 ```yaml
 # manifest.yaml
 name: awesome-importer
-description: an awesome importer
-version: 1.2.3
+display_name: Awesome Importer
+description: a magical and awesome importer
+homepage: https://an.awesome.website
+license: ISC
 connectors:
 - type: importer
-  executable: ./awesome
-  homepage: https://an.awesome.website
-  license: ISC
   protocols: [awesome]
+  executable: ./awesome
 ```
 
 5. Create and install the plugin:
 
 ```sh
-$ plakar pkg create manifest.yaml
+$ plakar pkg create manifest.yaml v1.2.3
 # this will create awesome-importer-v1.2.3.ptar
 $ plakar pkg install ./awesome-importer-v1.2.3.ptar
 $ plakar version
