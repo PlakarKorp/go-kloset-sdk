@@ -1,0 +1,6 @@
+location: s3://foo.com/bar
+access_key: bar
+secret_access_key: xxx
+use_tls: "true"
+some_integer: "-38"
+some_number: "45.123"
