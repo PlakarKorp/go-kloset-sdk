@@ -78,7 +78,7 @@ func (plugin *storagePluginServer) Size(ctx context.Context, req *gstorage.SizeR
 }
 
 func (plugin *storagePluginServer) List(ctx context.Context, req *gstorage.ListRequest) (*gstorage.ListResponse, error) {
-	ctx = storage.WithFlag(ctx, req.Flags)
+	ctx = storage.WithFlag(ctx, storage.StorageFlag(req.Flags))
 	macs, err := plugin.storage.List(ctx, storage.StorageResource(req.Type))
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (plugin *storagePluginServer) Put(stream grpc.ClientStreamingServer[gstorag
 	var (
 		res = storage.StorageResource(req.Type)
 		mac = objects.MAC(req.Mac)
-		ctx = storage.WithFlag(stream.Context(), req.Flags)
+		ctx = storage.WithFlag(stream.Context(), storage.StorageFlag(req.Flags))
 	)
 
 	size, err := plugin.storage.Put(ctx, res, mac, gstorage.ReceiveChunks(func() ([]byte, error) {
@@ -123,7 +123,7 @@ func (plugin *storagePluginServer) Get(req *gstorage.GetRequest, stream grpc.Ser
 	var (
 		res = storage.StorageResource(req.Type)
 		mac = objects.MAC(req.Mac)
-		ctx = storage.WithFlag(stream.Context(), req.Flags)
+		ctx = storage.WithFlag(stream.Context(), storage.StorageFlag(req.Flags))
 
 		rg *storage.Range
 	)
@@ -150,7 +150,7 @@ func (plugin *storagePluginServer) Get(req *gstorage.GetRequest, stream grpc.Ser
 }
 
 func (plugin *storagePluginServer) Delete(ctx context.Context, req *gstorage.DeleteRequest) (*gstorage.DeleteResponse, error) {
-	ctx = storage.WithFlag(ctx, req.Flags)
+	ctx = storage.WithFlag(ctx, storage.StorageFlag(req.Flags))
 	if err := plugin.storage.Delete(ctx, storage.StorageResource(req.Type), objects.MAC(req.Mac)); err != nil {
 		return nil, err
 	}
