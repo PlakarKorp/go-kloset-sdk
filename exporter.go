@@ -222,11 +222,11 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *gexporter.Cl
 //
 // The given constructor will be used to initialize the exporter instance.
 func RunExporter(constructor exporter.ExporterFn) error {
-	conn, listener, err := InitConn()
+	listener, closer, err := initListener()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)
 	}
-	defer conn.Close()
+	defer closer.Close()
 
 	return RunExporterOn(constructor, listener)
 }

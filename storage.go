@@ -168,11 +168,11 @@ func (plugin *storagePluginServer) Close(ctx context.Context, req *gstorage.Clos
 
 // RunStorage starts the gRPC server for the storage plugin.
 func RunStorage(constructor storage.StoreFn) error {
-	conn, listener, err := InitConn()
+	listener, closer, err := initListener()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)
 	}
-	defer conn.Close()
+	defer closer.Close()
 
 	return RunStorageOn(constructor, listener)
 }
