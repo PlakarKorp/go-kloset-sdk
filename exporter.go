@@ -221,22 +221,33 @@ func (plugin *exporterPluginServer) Close(ctx context.Context, req *gexporter.Cl
 // RunExporter launches the gRPC server for an exporter plugin.
 //
 // The given constructor will be used to initialize the exporter instance.
-func RunExporter(constructor exporter.ExporterFn) error {
+func RunExporter(ctx context.Context, constructor exporter.ExporterFn) error {
 	listener, closer, err := initListener()
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %w", err)
 	}
 	defer closer.Close()
 
-	return RunExporterOn(constructor, listener)
+	return RunExporterOn(ctx, constructor, listener)
 }
 
-func RunExporterOn(constructor exporter.ExporterFn, listener net.Listener) error {
+func RunExporterOn(ctx context.Context, constructor exporter.ExporterFn, listener net.Listener) error {
 	server := grpc.NewServer()
 
 	gexporter.RegisterExporterServer(server, &exporterPluginServer{
 		constructor: constructor,
 	})
+
+	done := make(chan struct{})
+	defer close(done)
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			server.Stop()
+		case <-done:
+		}
+	}()
 
 	if err := server.Serve(listener); err != nil {
 		return err
