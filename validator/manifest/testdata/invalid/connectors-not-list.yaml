@@ -1,0 +1,5 @@
+# error: cannot unmarshal
+name: test
+display_name: Test
+description: Test integration.
+connectors: {type: importer, executable: x, protocols: [x]}

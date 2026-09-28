@@ -1,0 +1,19 @@
+name: vault
+description: Plakar integration for HashiCorp Vault
+display_name: Vault
+api_version: v1.1.0
+homepage: https://github.com/PlakarKorp/integration-vault
+license: ISC
+connectors:
+  - type: secret_provider
+    executable: vault-sm
+    protocols: [vault-sm]
+    validator: ./secret-manager/schema.json
+  - type: importer
+    executable: ./vault-importer
+    protocols: [vault]
+    validator: ./importer/schema.json
+  - type: exporter
+    executable: ./vault-exporter
+    validator: ./exporter/schema.json
+    protocols: [vault]

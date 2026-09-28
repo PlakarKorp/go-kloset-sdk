@@ -1,0 +1,4 @@
+# error: description is required
+name: test
+display_name: Test
+connectors: [{type: importer, executable: x, protocols: [x]}]

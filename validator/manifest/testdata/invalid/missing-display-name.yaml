@@ -1,0 +1,4 @@
+# error: display_name is required
+name: test
+description: Test integration.
+connectors: [{type: importer, executable: x, protocols: [x]}]

@@ -1,0 +1,10 @@
+name: redis
+display_name: Redis
+description: Containerised Redis importer.
+connectors:
+  - type: importer
+    class: database
+    subclass: redis
+    protocols: [redis]
+    image_id: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    image: ghcr.io/plakarkorp/redis-importer:v1.0.0

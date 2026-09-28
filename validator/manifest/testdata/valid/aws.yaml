@@ -1,0 +1,11 @@
+name: aws
+display_name: AWS
+description: AWS
+homepage: https://github.com/PlakarKorp/integration-aws
+license: ISC
+api_version: v1.1.0
+connectors:
+  - type: secret_provider
+    executable: aws-sm
+    validator: ./schema.json
+    protocols: [aws-sm]

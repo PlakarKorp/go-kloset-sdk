@@ -1,0 +1,43 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Plakar Example Inventory Connector Config",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["credentials_type"],
+    "properties": {
+      "credentials_type": {
+        "type": "string",
+        "default": "iam",
+        "description": "Credentials type",
+        "enum": ["iam", "access_key"]
+      },
+      "access_key": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Access key"
+      },
+      "secret_access_key": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Secret access key"
+      },
+      "endpoint": {
+        "type": "string",
+        "format": "uri",
+        "description": "API endpoint"
+      }
+    },
+    "dependentRequired": {
+      "access_key": ["secret_access_key"]
+    },
+    "oneOf": [
+      {
+        "properties": { "credentials_type": { "const": "iam" } },
+        "not": { "required": ["access_key"] }
+      },
+      {
+        "properties": { "credentials_type": { "const": "access_key" } },
+        "required": ["access_key", "secret_access_key"]
+      }
+    ]
+}

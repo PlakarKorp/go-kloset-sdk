@@ -1,0 +1,19 @@
+# error: field flags not found
+name: example
+display_name: Example
+description: Import files from local filesystem
+homepage: https://github.com/tracepanic/plakar-integration
+license: ISC
+connectors:
+  - type: importer
+    executable: ./example-importer
+    protocols: [example]
+    flags: [localfs]
+  - type: exporter
+    executable: ./example-exporter
+    protocols: [example]
+    flags: [localfs]
+  - type: storage
+    executable: ./example-storage
+    protocols: [example]
+    flags: [localfs]

@@ -1,0 +1,10 @@
+# error: protocols is required
+name: ssh-inventory
+display_name: SSH Inventory
+description: Secure Shell Inventory
+homepage: https://github.com/PlakarKorp/integrations-private
+license: ISC
+connectors:
+  - type: inventory
+    executable: ssh-inventory
+    validator: ./cmd/ssh-inventory/schema.json

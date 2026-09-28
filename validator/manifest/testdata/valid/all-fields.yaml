@@ -1,0 +1,18 @@
+name: s3
+display_name: Amazon S3
+description: S3 object storage connector
+tier: community
+contact: support@plakar.io
+homepage: https://plakar.io
+license: ISC
+api_version: v1.1.0
+tags: [cloud, aws]
+connectors:
+  - type: storage
+    class: object-storage
+    subclass: s3
+    protocols: [s3]
+    location_flags: [localfs, file]
+    executable: s3-storage
+    args: [--verbose]
+    extra_files: [icon.png]

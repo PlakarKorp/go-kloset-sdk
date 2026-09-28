@@ -1,0 +1,5 @@
+# error: exactly one of executable and image_id
+name: test
+display_name: Test
+description: Test integration.
+connectors: [{type: importer, executable: x, image_id: "sha256:00", protocols: [x]}]

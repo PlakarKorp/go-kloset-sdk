@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Plakar Example Inventory Connector Config",
+  "type": "object",
+  "properties": {
+    "credentials_type": { "type": "string", "enum": "iam" }
+  }
+}

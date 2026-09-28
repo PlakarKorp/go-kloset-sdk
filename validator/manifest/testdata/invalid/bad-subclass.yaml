@@ -1,0 +1,5 @@
+# error: bad class or subclass
+name: test
+display_name: Test
+description: Test integration.
+connectors: [{type: importer, class: database, subclass: oracle, executable: x, protocols: [x]}]

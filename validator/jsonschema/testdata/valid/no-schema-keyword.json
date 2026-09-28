@@ -1,0 +1,8 @@
+{
+  "title": "Plakar Example Importer Connector Config",
+  "type": "object",
+  "required": ["location"],
+  "properties": {
+    "location": { "type": "string", "minLength": 1 }
+  }
+}

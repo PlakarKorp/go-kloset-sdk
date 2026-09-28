@@ -1,0 +1,5 @@
+# error: subclass s3 is not under class
+name: test
+display_name: Test
+description: Test integration.
+connectors: [{type: importer, subclass: s3, executable: x, protocols: [x]}]
