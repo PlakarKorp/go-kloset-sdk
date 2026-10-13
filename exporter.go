@@ -53,10 +53,11 @@ func (plugin *exporterPluginServer) Init(ctx context.Context, req *gexporter.Ini
 	plugin.flags = exp.Flags()
 
 	return &gexporter.InitResponse{
-		Origin: exp.Origin(),
-		Type:   exp.Type(),
-		Root:   exp.Root(),
-		Flags:  uint32(plugin.flags),
+		Origin:     exp.Origin(),
+		Type:       exp.Type(),
+		Root:       exp.Root(),
+		Flags:      uint32(plugin.flags),
+		HasPutData: true,
 	}, nil
 }
 

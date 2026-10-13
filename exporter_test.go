@@ -598,3 +598,23 @@ func TestRunExporterOnReleasesPayloadsOnShutdown(t *testing.T) {
 		t.Fatal("RunExporterOn did not return")
 	}
 }
+
+// the handshake is what puts a client on the entry protocol.
+func TestExporterServerAnnouncesPutData(t *testing.T) {
+	plugin := &exporterPluginServer{
+		constructor: func(context.Context, *connectors.Options, string, map[string]string) (exporter.Exporter, error) {
+			return &fakeExporter{}, nil
+		},
+	}
+
+	res, err := plugin.Init(t.Context(), &gexporter.InitRequest{
+		Options: &gexporter.Options{Maxconcurrency: 4},
+		Proto:   "p",
+	})
+	if err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	if !res.HasPutData {
+		t.Error("the handshake does not announce PutData support")
+	}
+}
