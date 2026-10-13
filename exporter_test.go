@@ -3,6 +3,7 @@ package sdk
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"iter"
 	"net"
@@ -136,6 +137,54 @@ func recordOf(pathname string, size int64) *gconn.Record {
 	})
 }
 
+func entryOf(pathname string, size int64) *gexporter.ExportEntry {
+	return &gexporter.ExportEntry{Record: recordOf(pathname, size)}
+}
+
+// putData uploads one payload the way the client does.
+func putData(t *testing.T, client gexporter.ExporterClient, id uint64, body []byte, readErr error) *gexporter.PutDataResponse {
+	t.Helper()
+
+	stream, err := client.PutData(t.Context())
+	if err != nil {
+		t.Fatalf("PutData: %v", err)
+	}
+
+	// the exporter may hang up at any point, which ends the stream
+	// with io.EOF and is answered by the response, not by the send.
+	send := func(req *gexporter.PutDataRequest) bool {
+		err := stream.Send(req)
+		if err != nil && !errors.Is(err, io.EOF) {
+			t.Fatalf("send: %v", err)
+		}
+		return err == nil
+	}
+
+	send(&gexporter.PutDataRequest{
+		Packet: &gexporter.PutDataRequest_Id{Id: id},
+	})
+
+	if readErr != nil {
+		send(&gexporter.PutDataRequest{
+			Packet: &gexporter.PutDataRequest_Error{Error: readErr.Error()},
+		})
+	} else {
+		for chunk := range chunked(body, 4096) {
+			pkt := &gexporter.PutDataRequest_Chunk{Chunk: chunk}
+			if !send(&gexporter.PutDataRequest{Packet: pkt}) {
+				break
+			}
+		}
+	}
+
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		t.Fatalf("CloseAndRecv: %v", err)
+	}
+
+	return res
+}
+
 // chunked yields body one message at a time, the way a client sends it.
 func chunked(body []byte, size int) iter.Seq[[]byte] {
 	return func(yield func([]byte) bool) {
@@ -149,9 +198,214 @@ func chunked(body []byte, size int) iter.Seq[[]byte] {
 	}
 }
 
+// exportEntries runs a whole Export session, sending entries and
+// uploading the bodies the dispatch function hands back.
+func exportEntries(t *testing.T, client gexporter.ExporterClient, entries []*gexporter.ExportEntry, upload func()) {
+	t.Helper()
+
+	stream, err := client.Export(t.Context())
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	results := make(chan int, 1)
+	go func() {
+		n := 0
+		for {
+			if _, err := stream.Recv(); err != nil {
+				results <- n
+				return
+			}
+			n++
+		}
+	}()
+
+	for _, entry := range entries {
+		if err := stream.Send(&gexporter.ExportRequest{
+			Packet: &gexporter.ExportRequest_Entry{Entry: entry},
+		}); err != nil {
+			t.Fatalf("send entry: %v", err)
+		}
+	}
+
+	if upload != nil {
+		upload()
+	}
+
+	if err := stream.CloseSend(); err != nil {
+		t.Fatalf("CloseSend: %v", err)
+	}
+
+	select {
+	case <-results:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for the export to finish")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+func TestExporterServerInlinePayload(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body []byte
+	}{
+		{"empty", []byte{}},
+		{"small", []byte("data")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			exp := &fakeExporter{}
+			client := dialPlugin(t, exp)
+
+			entry := entryOf("/f", int64(len(tc.body)))
+			entry.Chunk = tc.body
+
+			exportEntries(t, client, []*gexporter.ExportEntry{entry}, nil)
+
+			got := exp.records()
+			if len(got) != 1 {
+				t.Fatalf("exporter saw %d records, want 1", len(got))
+			}
+			if !bytes.Equal(got[0].payload, tc.body) {
+				t.Errorf("payload %q, want %q", got[0].payload, tc.body)
+			}
+		})
+	}
+}
+
+// The record and its body travel on different streams, and gRPC does
+// not order them: both arrival orders have to work.
+func TestExporterServerStreamedPayload(t *testing.T) {
+	body := bytes.Repeat([]byte("x"), 128*1024)
+
+	for _, tc := range []struct {
+		name        string
+		uploadFirst bool
+	}{
+		{"entry first", false},
+		{"payload first", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			exp := &fakeExporter{}
+			client := dialPlugin(t, exp)
+
+			entry := entryOf("/f", int64(len(body)))
+			entry.Id = 1
+
+			upload := func() { putData(t, client, 1, body, nil) }
+			if tc.uploadFirst {
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					putData(t, client, 1, body, nil)
+				}()
+				// the upload blocks until the record shows up
+				exportEntries(t, client, []*gexporter.ExportEntry{entry}, nil)
+				<-done
+			} else {
+				exportEntries(t, client, []*gexporter.ExportEntry{entry}, upload)
+			}
+
+			got := exp.records()
+			if len(got) != 1 {
+				t.Fatalf("exporter saw %d records, want 1", len(got))
+			}
+			if got[0].err != nil {
+				t.Fatalf("read: %v", got[0].err)
+			}
+			if !bytes.Equal(got[0].payload, body) {
+				t.Errorf("payload: got %d bytes, want %d", len(got[0].payload), len(body))
+			}
+		})
+	}
+}
+
+// A payload the client could not read reaches the exporter as a read
+// error on that record, and that record only.
+func TestExporterServerPayloadError(t *testing.T) {
+	exp := &fakeExporter{}
+	client := dialPlugin(t, exp)
+
+	entry := entryOf("/f", 4096)
+	entry.Id = 1
+
+	exportEntries(t, client, []*gexporter.ExportEntry{entry}, func() {
+		putData(t, client, 1, nil, errors.New("boom"))
+	})
+
+	got := exp.records()
+	if len(got) != 1 {
+		t.Fatalf("exporter saw %d records, want 1", len(got))
+	}
+	if got[0].err == nil || !strings.Contains(got[0].err.Error(), "boom") {
+		t.Errorf("read error %v, want it to mention boom", got[0].err)
+	}
+}
+
+// An exporter that stops reading a record early says so through the
+// response, so that the client can tell it from a broken stream.
+func TestExporterServerAbortedPayload(t *testing.T) {
+	exp := &fakeExporter{readLimit: 16}
+	client := dialPlugin(t, exp)
+
+	entry := entryOf("/f", 1<<20)
+	entry.Id = 1
+
+	var res *gexporter.PutDataResponse
+	exportEntries(t, client, []*gexporter.ExportEntry{entry}, func() {
+		res = putData(t, client, 1, bytes.Repeat([]byte("x"), 1<<20), nil)
+	})
+
+	if res == nil || !res.Aborted {
+		t.Errorf("PutData response %v, want aborted", res)
+	}
+}
+
+// The whole point: the receive goroutine no longer waits for one
+// payload before taking the next record.
+func TestExporterServerRecordsDoNotWaitOnPayloads(t *testing.T) {
+	const count = 4
+
+	exp := &fakeExporter{}
+	client := dialPlugin(t, exp)
+
+	body := bytes.Repeat([]byte("x"), 64*1024)
+
+	entries := make([]*gexporter.ExportEntry, count)
+	for i := range entries {
+		entries[i] = entryOf("/f", int64(len(body)))
+		entries[i].Id = uint64(i + 1)
+	}
+
+	// Every entry is sent before any payload is uploaded, which the
+	// legacy protocol could not do: it would deadlock on the first.
+	exportEntries(t, client, entries, func() {
+		var wg sync.WaitGroup
+		for i := range entries {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				putData(t, client, uint64(i+1), body, nil)
+			}()
+		}
+		wg.Wait()
+	})
+
+	got := exp.records()
+	if len(got) != count {
+		t.Fatalf("exporter saw %d records, want %d", len(got), count)
+	}
+	for i, rec := range got {
+		if rec.err != nil {
+			t.Errorf("record %d: %v", i, rec.err)
+		}
+		if !bytes.Equal(rec.payload, body) {
+			t.Errorf("record %d: payload is %d bytes, want %d", i, len(rec.payload), len(body))
+		}
+	}
+}
 
 // The old protocol, where the payload follows the record on the Export
 // stream itself, has to keep working untouched.
