@@ -354,9 +354,8 @@ func RunExporter(ctx context.Context, constructor exporter.ExporterFn) error {
 func RunExporterOn(ctx context.Context, constructor exporter.ExporterFn, listener net.Listener) error {
 	server := grpc.NewServer()
 
-	gexporter.RegisterExporterServer(server, &exporterPluginServer{
-		constructor: constructor,
-	})
+	plugin := &exporterPluginServer{constructor: constructor}
+	gexporter.RegisterExporterServer(server, plugin)
 
 	done := make(chan struct{})
 	defer close(done)
@@ -364,6 +363,10 @@ func RunExporterOn(ctx context.Context, constructor exporter.ExporterFn, listene
 	go func() {
 		select {
 		case <-ctx.Done():
+			// an exporter parked on a payload that is never
+			// going to arrive now would never get to wind
+			// down: Stop() does not wait for the handlers.
+			plugin.inflight.fail(fmt.Errorf("the plugin is shutting down: %w", ctx.Err()))
 			server.Stop()
 		case <-done:
 		}

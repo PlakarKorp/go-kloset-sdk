@@ -115,6 +115,14 @@ func dialPlugin(t *testing.T, exp exporter.Exporter) gexporter.ExporterClient {
 		},
 	})
 	go func() { _ = srv.Serve(lis) }()
+	t.Cleanup(srv.Stop)
+
+	return dialOn(t, lis)
+}
+
+// dialOn connects to a plugin already listening on lis and inits it.
+func dialOn(t *testing.T, lis *bufconn.Listener) gexporter.ExporterClient {
+	t.Helper()
 
 	conn, err := grpc.NewClient("passthrough://bufconn",
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
@@ -125,10 +133,7 @@ func dialPlugin(t *testing.T, exp exporter.Exporter) gexporter.ExporterClient {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	t.Cleanup(func() {
-		conn.Close()
-		srv.Stop()
-	})
+	t.Cleanup(func() { conn.Close() })
 
 	client := gexporter.NewExporterClient(conn)
 	if _, err := client.Init(t.Context(), &gexporter.InitRequest{
@@ -531,5 +536,65 @@ func TestExporterServerReleasesPayloadsOnClose(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("the exporter is still blocked on a payload nobody will send")
+	}
+}
+
+// a shutdown has to release an exporter parked on a payload, so that
+// it gets to wind down instead of staying blocked.
+func TestRunExporterOnReleasesPayloadsOnShutdown(t *testing.T) {
+	exp := &fakeExporter{
+		reading: make(chan struct{}, 1),
+		seen:    make(chan gotRecord, 1),
+	}
+
+	lis := bufconn.Listen(1 << 20)
+	ctx, cancel := context.WithCancel(t.Context())
+
+	served := make(chan error, 1)
+	go func() {
+		served <- RunExporterOn(ctx, func(context.Context, *connectors.Options, string, map[string]string) (exporter.Exporter, error) {
+			return exp, nil
+		}, lis)
+	}()
+
+	client := dialOn(t, lis)
+
+	stream, err := client.Export(t.Context())
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	entry := entryOf("/f", 1<<20)
+	entry.Id = 1
+	if err := stream.Send(&gexporter.ExportRequest{
+		Packet: &gexporter.ExportRequest_Entry{Entry: entry},
+	}); err != nil {
+		t.Fatalf("send entry: %v", err)
+	}
+
+	select {
+	case <-exp.reading:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for the exporter to get the record")
+	}
+
+	cancel()
+
+	select {
+	case got := <-exp.seen:
+		if got.err == nil {
+			t.Error("the payload read succeeded, want the shutdown error")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the exporter is still blocked on a payload nobody will send")
+	}
+
+	select {
+	case err := <-served:
+		if err != nil {
+			t.Fatalf("RunExporterOn: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("RunExporterOn did not return")
 	}
 }
