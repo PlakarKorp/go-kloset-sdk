@@ -30,6 +30,10 @@ type exporterPluginServer struct {
 	gexporter.UnimplementedExporterServer
 }
 
+var (
+	ErrExporterClosed = errors.New("the exporter is closed")
+)
+
 func (plugin *exporterPluginServer) Init(ctx context.Context, req *gexporter.InitRequest) (*gexporter.InitResponse, error) {
 	opts := connectors.Options{
 		MaxConcurrency:  int(req.Options.Maxconcurrency),
@@ -305,14 +309,6 @@ func (plugin *exporterPluginServer) Export(stream grpc.BidiStreamingServer[gexpo
 
 	ctx, cancel := context.WithCancel(stream.Context())
 
-	// in case of context cancellation, fail the pending payloads
-	// so that the exporter can terminate.  The context is always
-	// cancelled, so this cannot leak.
-	go func() {
-		<-stream.Context().Done()
-		plugin.inflight.fail(fmt.Errorf("export is over: %w", stream.Context().Err()))
-	}()
-
 	wg.Go(func() error {
 		return plugin.receiveRecords(stream, records)
 	})
@@ -330,6 +326,10 @@ func (plugin *exporterPluginServer) Export(stream grpc.BidiStreamingServer[gexpo
 }
 
 func (plugin *exporterPluginServer) Close(ctx context.Context, req *gexporter.CloseRequest) (*gexporter.CloseResponse, error) {
+	// we are done for good: release the payloads still waiting,
+	// before the exporter gets a chance to wait on one of them.
+	plugin.inflight.fail(ErrExporterClosed)
+
 	err := plugin.exporter.Close(ctx)
 	if err != nil {
 		return nil, err

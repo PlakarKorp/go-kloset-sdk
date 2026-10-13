@@ -490,17 +490,16 @@ func TestExporterServerLegacyProtocol(t *testing.T) {
 	}
 }
 
-// the exporter should terminate when the context is cancelled even if
-// there are pending payloads.
-func TestExporterServerReleasesPayloadsWhenTheClientVanishes(t *testing.T) {
+// the exporter should terminate on Close even if it is holding a
+// payload that was never picked up.
+func TestExporterServerReleasesPayloadsOnClose(t *testing.T) {
 	exp := &fakeExporter{
 		reading: make(chan struct{}, 1),
 		seen:    make(chan gotRecord, 1),
 	}
 	client := dialPlugin(t, exp)
 
-	ctx, cancel := context.WithCancel(t.Context())
-	stream, err := client.Export(ctx)
+	stream, err := client.Export(t.Context())
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
@@ -521,7 +520,9 @@ func TestExporterServerReleasesPayloadsWhenTheClientVanishes(t *testing.T) {
 		t.Fatal("timeout waiting for the exporter to get the record")
 	}
 
-	cancel()
+	if _, err := client.Close(t.Context(), &gexporter.CloseRequest{}); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
 
 	select {
 	case got := <-exp.seen:

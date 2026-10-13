@@ -24,14 +24,14 @@ type payload struct {
 	wr *io.PipeWriter
 
 	// taken tracks which halves have been handed out.  Once both
-	// are, whoever holds them closes them and the session stops
-	// keeping track.
+	// are, whoever holds them closes them and we stop keeping
+	// track.
 	taken int
 }
 
 // payloads matches the records on the Export stream with the PutData
 // streams carrying their bodies.  Its zero value is ready to use, and
-// it is good for one Export session: fail() ends it for good.
+// it is good until fail() ends it for good.
 type payloads struct {
 	mu      sync.Mutex
 	pending map[uint64]*payload
@@ -87,8 +87,8 @@ func (ps *payloads) writer(id uint64) (*io.PipeWriter, error) {
 	return pl.wr, nil
 }
 
-// fail terminates the session: every body still waiting for its other
-// half is released with err.  A body both sides already hold is
+// fail terminates the registry: every body still waiting for its
+// other half is released with err.  A body both sides already hold is
 // untouched.
 func (ps *payloads) fail(err error) {
 	ps.mu.Lock()
