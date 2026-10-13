@@ -146,21 +146,9 @@ func (plugin *exporterPluginServer) receiveRecords(stream grpc.BidiStreamingServ
 			return fmt.Errorf("bad type; expected a record, got %t", res.Packet)
 		}
 
-		record, err := gconn.RecordFromProto(r)
+		record, end, err := plugin.receiveRecord(stream, r)
 		if err != nil {
 			return err
-		}
-
-		var (
-			rd  io.ReadCloser
-			end chan struct{}
-		)
-
-		if r.HasReader {
-			end = make(chan struct{})
-			rd = open(stream, end)
-
-			record.Reader = rd
 		}
 
 		records <- record
@@ -168,6 +156,24 @@ func (plugin *exporterPluginServer) receiveRecords(stream grpc.BidiStreamingServ
 			<-end
 		}
 	}
+}
+
+// receiveRecord handles the legacy protocol, where the payload follows
+// the record on the Export stream.
+func (plugin *exporterPluginServer) receiveRecord(stream grpc.BidiStreamingServer[gexporter.ExportRequest, gexporter.ExportResponse], r *gconn.Record) (*connectors.Record, chan struct{}, error) {
+	record, err := gconn.RecordFromProto(r)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !r.HasReader {
+		return record, nil, nil
+	}
+
+	end := make(chan struct{})
+	record.Reader = open(stream, end)
+
+	return record, end, nil
 }
 
 func (plugin *exporterPluginServer) transmitResults(stream grpc.BidiStreamingServer[gexporter.ExportRequest, gexporter.ExportResponse], results <-chan *connectors.Result) error {
