@@ -305,6 +305,14 @@ func (plugin *exporterPluginServer) Export(stream grpc.BidiStreamingServer[gexpo
 
 	ctx, cancel := context.WithCancel(stream.Context())
 
+	// in case of context cancellation, fail the pending payloads
+	// so that the exporter can terminate.  The context is always
+	// cancelled, so this cannot leak.
+	go func() {
+		<-stream.Context().Done()
+		plugin.inflight.fail(fmt.Errorf("export is over: %w", stream.Context().Err()))
+	}()
+
 	wg.Go(func() error {
 		return plugin.receiveRecords(stream, records)
 	})

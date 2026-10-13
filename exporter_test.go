@@ -40,6 +40,11 @@ type fakeExporter struct {
 	// readLimit, when positive, makes the exporter close a payload
 	// after that many bytes instead of reading it to the end.
 	readLimit int
+
+	// reading and seen, when set, report a record about to be read
+	// and one that has been.
+	reading chan struct{}
+	seen    chan gotRecord
 }
 
 func (f *fakeExporter) Origin() string              { return "o" }
@@ -66,6 +71,10 @@ func (f *fakeExporter) Export(ctx context.Context, records <-chan *connectors.Re
 func (f *fakeExporter) consume(record *connectors.Record) *connectors.Result {
 	got := gotRecord{pathname: record.Pathname}
 
+	if f.reading != nil {
+		f.reading <- struct{}{}
+	}
+
 	if record.Reader != nil {
 		var rd io.Reader = record.Reader
 		if f.readLimit > 0 {
@@ -77,6 +86,10 @@ func (f *fakeExporter) consume(record *connectors.Record) *connectors.Result {
 	f.mu.Lock()
 	f.got = append(f.got, got)
 	f.mu.Unlock()
+
+	if f.seen != nil {
+		f.seen <- got
+	}
 
 	return record.Ok()
 }
@@ -474,5 +487,48 @@ func TestExporterServerLegacyProtocol(t *testing.T) {
 		if !bytes.Equal(rec.payload, body) {
 			t.Errorf("record %d: payload is %d bytes, want %d", i, len(rec.payload), len(body))
 		}
+	}
+}
+
+// the exporter should terminate when the context is cancelled even if
+// there are pending payloads.
+func TestExporterServerReleasesPayloadsWhenTheClientVanishes(t *testing.T) {
+	exp := &fakeExporter{
+		reading: make(chan struct{}, 1),
+		seen:    make(chan gotRecord, 1),
+	}
+	client := dialPlugin(t, exp)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	stream, err := client.Export(ctx)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	entry := entryOf("/f", 1<<20)
+	entry.Id = 1
+	if err := stream.Send(&gexporter.ExportRequest{
+		Packet: &gexporter.ExportRequest_Entry{Entry: entry},
+	}); err != nil {
+		t.Fatalf("send entry: %v", err)
+	}
+
+	// Wait until the exporter holds the record, so that we know it
+	// is about to block on a payload we are never going to upload.
+	select {
+	case <-exp.reading:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for the exporter to get the record")
+	}
+
+	cancel()
+
+	select {
+	case got := <-exp.seen:
+		if got.err == nil {
+			t.Error("the payload read succeeded, want the session error")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the exporter is still blocked on a payload nobody will send")
 	}
 }
