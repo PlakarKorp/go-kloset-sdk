@@ -6,7 +6,7 @@ require (
 	github.com/PlakarKorp/integration-grpc v1.1.0-rc.5.0.20260609083250-a4652c3f4219
 	github.com/PlakarKorp/kloset v1.2.0-alpha.1
 	golang.org/x/sync v0.22.0
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 )
 
 require (
